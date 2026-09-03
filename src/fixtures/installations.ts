@@ -25,7 +25,7 @@
 
 import { DatabaseSync } from 'node:sqlite';
 
-import { PARTITIONS, STUDIES, withCombinedModalities, withRubbishDates } from './facts.js';
+import { PARTITIONS, STUDIES, withCombinedModalities, withRubbishDates } from './facts.ts';
 
 /**
  * The schema as the (invented) vendor documentation describes it. Every other
@@ -49,7 +49,15 @@ const DOCUMENTED = {
   partition: 'ServerPartitionGUID',
 };
 
-function guidFor(n) {
+import type { Study } from './facts.ts';
+
+/** The database handle these builders write into. */
+type Db = { exec(sql: string): void; prepare(sql: string): { run(...p: unknown[]): unknown } };
+
+/** How one installation names and shapes its Study table. */
+type Plan = Record<string, string>;
+
+function guidFor(n: number): string {
   const hex = (n + 0x51a2c000).toString(16).padStart(8, '0');
   return `${hex}-1000-4000-8000-000000000000`;
 }
@@ -63,7 +71,7 @@ function guidFor(n) {
  * the real declared types keeps the fixture honest about what it is standing in
  * for, and keeps the generated SQL comparable across dialects.
  */
-function studyTable(db, plan, { withModality = true, withDevice = true } = {}) {
+function studyTable(db: Db, plan: Plan, { withModality = true, withDevice = true } = {}) {
   const columns = [
     `${plan.guid} TEXT PRIMARY KEY`,
     `${plan.uid} VARCHAR(64) NOT NULL`,
@@ -83,7 +91,7 @@ function studyTable(db, plan, { withModality = true, withDevice = true } = {}) {
   db.exec(`CREATE TABLE ${plan.study} (\n  ${columns.join(',\n  ')}\n)`);
 }
 
-function partitionTable(db) {
+function partitionTable(db: Db): void {
   db.exec(`CREATE TABLE ServerPartition (
   GUID TEXT PRIMARY KEY,
   AeTitle NVARCHAR(64),
@@ -94,32 +102,32 @@ function partitionTable(db) {
   for (const one of PARTITIONS) put.run(one.id, one.ae, one.description);
 }
 
-function fillStudies(db, plan, studies, { withModality = true, withDevice = true } = {}) {
+function fillStudies(db: Db, plan: Plan, studies: Study[], { withModality = true, withDevice = true } = {}) {
   // Column name paired with how to get its value, so a column that is not
   // created cannot leave the values shifted by one — which is the bug this
   // shape exists to make impossible rather than to catch.
   const put_ = [
-    [plan.guid, (one, n) => guidFor(n)],
-    [plan.uid, (one) => one.uid],
-    [plan.accession, (one) => one.accession],
-    [plan.patient, (one) => one.patient],
-    [plan.date, (one) => one.date],
-    [plan.time, (one) => one.time],
-    [plan.description, (one) => one.description],
-    withModality ? [plan.modality, (one) => one.modality] : null,
-    withDevice ? [plan.device, (one) => one.device] : null,
-    [plan.series, (one) => one.series],
-    [plan.instances, (one) => one.instances],
-    [plan.size, (one) => one.sizeKB],
-    [plan.partition, (one) => one.partition],
-  ].filter(Boolean);
+    [plan.guid, (one: Study, n: number) => guidFor(n)],
+    [plan.uid, (one: Study) => one.uid],
+    [plan.accession, (one: Study) => one.accession],
+    [plan.patient, (one: Study) => one.patient],
+    [plan.date, (one: Study) => one.date],
+    [plan.time, (one: Study) => one.time],
+    [plan.description, (one: Study) => one.description],
+    withModality ? [plan.modality, (one: Study) => one.modality] : null,
+    withDevice ? [plan.device, (one: Study) => one.device] : null,
+    [plan.series, (one: Study) => one.series],
+    [plan.instances, (one: Study) => one.instances],
+    [plan.size, (one: Study) => one.sizeKB],
+    [plan.partition, (one: Study) => one.partition],
+  ].filter(Boolean) as Array<[string, (one: Study, n: number) => unknown]>;
 
   const names = put_.map(([name]) => name);
   const statement = db.prepare(
     `INSERT INTO ${plan.study} (${names.join(', ')}) VALUES (${names.map(() => '?').join(', ')})`
   );
 
-  studies.forEach((one, n) => {
+  studies.forEach((one: Study, n: number) => {
     statement.run(...put_.map(([, get]) => get(one, n)));
   });
 }
@@ -133,7 +141,7 @@ function fillStudies(db, plan, studies, { withModality = true, withDevice = true
  * errors. The dashboard shows numbers roughly four times too large and shaped
  * exactly like the right ones.
  */
-function seriesTable(db, studies) {
+function seriesTable(db: Db, studies: Study[]): void {
   db.exec(`CREATE TABLE Series (
   GUID TEXT PRIMARY KEY,
   StudyGUID TEXT NOT NULL,
@@ -168,7 +176,7 @@ export const INSTALLATIONS = [
     name: 'as-documented',
     differs: 'nothing — the schema the vendor documentation describes',
     why: 'The control. If an answer is wrong here it is the query that is wrong, not the schema.',
-    build(db) {
+    build(db: Db) {
       studyTable(db, DOCUMENTED);
       fillStudies(db, DOCUMENTED, STUDIES);
       partitionTable(db);
@@ -190,7 +198,7 @@ export const INSTALLATIONS = [
       size: 'StudySizeKB',
       patient: 'PatientID',
     },
-    build(db) {
+    build(db: Db) {
       studyTable(db, this.plan);
       fillStudies(db, this.plan, STUDIES);
       partitionTable(db);
@@ -204,7 +212,7 @@ export const INSTALLATIONS = [
       'The documentation puts the modality on the study. The data model puts it on the series, which ' +
       'is where it belongs: a study can contain series of more than one modality. This is not a ' +
       'defect, it is the schema being more correct than the document about it.',
-    build(db) {
+    build(db: Db) {
       studyTable(db, DOCUMENTED, { withModality: false });
       fillStudies(db, DOCUMENTED, STUDIES, { withModality: false });
       seriesTable(db, STUDIES);
@@ -219,7 +227,7 @@ export const INSTALLATIONS = [
       'It is optional, it was added in a later version, and this site upgraded the application without ' +
       'the schema step. One view cannot be answered here. Saying so is a correct answer; a chart of ' +
       'nothing labelled as data is not.',
-    build(db) {
+    build(db: Db) {
       studyTable(db, DOCUMENTED, { withDevice: false });
       fillStudies(db, DOCUMENTED, STUDIES, { withDevice: false });
       partitionTable(db);
@@ -233,7 +241,7 @@ export const INSTALLATIONS = [
       'StudyDate is a VARCHAR(8) holding whatever the sending modality put in it: nothing, an empty ' +
       'string, a human-readable date, a word. Over two years an archive collects a few. They are the ' +
       'reason a total and a chart on the same page can disagree.',
-    build(db) {
+    build(db: Db) {
       studyTable(db, DOCUMENTED);
       fillStudies(db, DOCUMENTED, withRubbishDates());
       partitionTable(db);
@@ -247,7 +255,7 @@ export const INSTALLATIONS = [
       'ModalitiesInStudy is multi-valued — value multiplicity 1-n, backslash delimited — so CT\\MR is ' +
       'a correct value for a study containing both. It is also a value that a GROUP BY turns into a ' +
       'category which is neither, while quietly taking the count away from both.',
-    build(db) {
+    build(db: Db) {
       studyTable(db, DOCUMENTED);
       fillStudies(db, DOCUMENTED, withCombinedModalities());
       partitionTable(db);
@@ -262,7 +270,7 @@ export const INSTALLATIONS = [
  * `facts.js` every time and a file on disk would only be a way for a stale one
  * to survive a change to the facts and quietly measure the wrong archive.
  */
-export function open(name) {
+export function open(name: string) {
   const installation = INSTALLATIONS.find((one) => one.name === name);
   if (!installation) throw new Error(`no installation called ${name}`);
 
@@ -273,7 +281,7 @@ export function open(name) {
 }
 
 /** The studies each installation holds, which is not always `STUDIES`. */
-export function studiesIn(name) {
+export function studiesIn(name: string) {
   if (name === 'undatable-rows') return withRubbishDates();
   if (name === 'combined-modalities') return withCombinedModalities();
   return STUDIES;

@@ -9,7 +9,8 @@
  * servers.
  */
 
-import { readable } from './introspect.js';
+import type { Dialect } from './dialect.ts';
+import { readable } from './introspect.ts';
 
 /**
  * Wrap a `DatabaseSync` as the `run(sql, params)` the rest of the code expects.
@@ -17,13 +18,28 @@ import { readable } from './introspect.js';
  * Every row goes through `readable` so callers can ask for a column by the name
  * they chose in the SELECT without caring what the driver did to its case.
  */
-export function runner(db) {
-  const run = (sql, params = []) => {
-    const statement = db.prepare(sql);
-    return statement.all(...params).map(readable);
-  };
+/** One row, with its column names as the SELECT wrote them. */
+export type Row = Record<string, unknown>;
 
-  run.one = (sql, params = []) => run(sql, params)[0] ?? null;
+/**
+ * A query, and the shape its caller says it returns.
+ *
+ * Every query in `src/ask/` goes through one of these. The cast lives here
+ * rather than at the call sites, because a driver cannot know what a SELECT
+ * produces and forty casts saying so would say nothing.
+ */
+export type Run = {
+  <T = Row>(sql: string, params?: unknown[]): T[];
+  one: <T = Row>(sql: string, params?: unknown[]) => T | null;
+};
+
+export function runner(db: { prepare: (sql: string) => { all: (...p: unknown[]) => unknown[] } }): Run {
+  const run = ((sql: string, params: unknown[] = []) => {
+    const statement = db.prepare(sql);
+    return statement.all(...params).map((row) => readable(row as Record<string, unknown>));
+  }) as unknown as Run;
+
+  run.one = ((sql: string, params: unknown[] = []) => run(sql, params)[0] ?? null) as Run['one'];
 
   return run;
 }
@@ -38,12 +54,12 @@ export function runner(db) {
  * escaping function anywhere in `src/ask/`, which is the only way to be sure
  * none is being used.
  */
-export function parameters(d) {
-  const values = [];
+export function parameters(d: Dialect) {
+  const values: unknown[] = [];
 
   return {
     /** Add a value, get back the placeholder that refers to it. */
-    add(value) {
+    add(value: unknown): string {
       values.push(value);
       return d.placeholder(values.length);
     },

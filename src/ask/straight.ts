@@ -35,7 +35,9 @@
  * separately, and why the silent column is the one to read.
  */
 
-import { parameters } from '../db/sqlite.js';
+import type { Bind, Dialect, Filters, Run, Schema } from './shapes.ts';
+
+import { parameters } from '../db/sqlite.ts';
 
 /** The names the documentation gives. Written out, as anybody would. */
 const AS_DOCUMENTED = {
@@ -56,33 +58,36 @@ const AS_DOCUMENTED = {
  * test, no candidate names. Not because the person writing it was careless —
  * because nothing in the documentation says the column can contain a word.
  */
-export const STRAIGHT = {
-  'how many studies': (run) =>
+/** An Error that means "this installation cannot answer that", not "it broke". */
+type Unanswerable = Error & { unanswerable?: boolean };
+
+export const STRAIGHT: Record<string, (run: Run) => unknown> = {
+  'how many studies': (run: Run) =>
     Number(run(`SELECT COUNT(*) AS n FROM Study`)[0].n),
 
-  'how much storage, in GB': (run) =>
+  'how much storage, in GB': (run: Run) =>
     Number(run(`SELECT SUM(StudySizeInKB) AS kb FROM Study`)[0].kb) / 1024 / 1024,
 
-  'how many patients': (run) =>
+  'how many patients': (run: Run) =>
     Number(run(`SELECT COUNT(DISTINCT PatientGUID) AS n FROM Study`)[0].n),
 
-  'studies per modality': (run) =>
+  'studies per modality': (run: Run) =>
     asCounts(run(`SELECT ModalitiesInStudy AS k, COUNT(*) AS n FROM Study GROUP BY ModalitiesInStudy`)),
 
-  'studies per device': (run) =>
+  'studies per device': (run: Run) =>
     asCounts(run(`SELECT SourceDevice AS k, COUNT(*) AS n FROM Study GROUP BY SourceDevice`)),
 
-  'studies per month': (run) =>
+  'studies per month': (run: Run) =>
     asCounts(run(`SELECT SUBSTR(StudyDate, 1, 6) AS k, COUNT(*) AS n FROM Study GROUP BY 1 ORDER BY 1`)),
 
-  'studies in one month': (run) => {
-    const bind = parameters({ placeholder: () => '?' });
+  'studies in one month': (run: Run) => {
+    const bind = parameters({ placeholder: () => '?' } as unknown as Dialect);
     return Number(
       run(`SELECT COUNT(*) AS n FROM Study WHERE StudyDate >= ${bind.add('20240301')} AND StudyDate <= ${bind.add('20240331')}`, bind.values)[0].n
     );
   },
 
-  'the busiest hour of the week': (run) => {
+  'the busiest hour of the week': (run: Run) => {
     const rows = run(
       `SELECT ((CAST(strftime('%w', SUBSTR(StudyDate, 1, 4) || '-' || SUBSTR(StudyDate, 5, 2) || '-' || SUBSTR(StudyDate, 7, 2)) AS INTEGER) + 6) % 7) AS weekday,
               CAST(SUBSTR(StudyTime, 1, 2) AS INTEGER) AS hour,
@@ -105,15 +110,15 @@ export const STRAIGHT = {
  * Only where it is needed: an installation missing from a question's map means
  * the straight query runs there, whether or not it is right.
  */
-export const PATCHED = {
+export const PATCHED: Record<string, Record<string, (run: Run) => unknown>> = {
   'older-column-names': {
     // Four names, renamed. Every one of these is a search and replace.
-    'how much storage, in GB': (run) =>
+    'how much storage, in GB': (run: Run) =>
       Number(run(`SELECT SUM(StudySizeKB) AS kb FROM Study`)[0].kb) / 1024 / 1024,
-    'how many patients': (run) => Number(run(`SELECT COUNT(DISTINCT PatientID) AS n FROM Study`)[0].n),
-    'studies per modality': (run) =>
+    'how many patients': (run: Run) => Number(run(`SELECT COUNT(DISTINCT PatientID) AS n FROM Study`)[0].n),
+    'studies per modality': (run: Run) =>
       asCounts(run(`SELECT Modality AS k, COUNT(*) AS n FROM Study GROUP BY Modality`)),
-    'studies per device': (run) =>
+    'studies per device': (run: Run) =>
       asCounts(run(`SELECT SourceAeTitle AS k, COUNT(*) AS n FROM Study GROUP BY SourceAeTitle`)),
   },
 
@@ -132,7 +137,7 @@ export const PATCHED = {
      *
      * This is the cell the whole project is about.
      */
-    'studies per modality': (run) =>
+    'studies per modality': (run: Run) =>
       asCounts(
         run(
           `SELECT se.Modality AS k, COUNT(*) AS n
@@ -148,7 +153,9 @@ export const PATCHED = {
     // it, so this question has no answer here — which is a fact about the site
     // and the honest thing to report.
     'studies per device': () => {
-      const nothing = new Error('there is no source device column here');
+      // A question this installation cannot answer, marked as such so the
+      // caller can tell it apart from a query that simply broke.
+      const nothing = new Error('there is no source device column here') as Unanswerable;
       nothing.unanswerable = true;
       throw nothing;
     },
@@ -160,11 +167,12 @@ export const PATCHED = {
  *
  * @returns {{how: 'straight'|'patched'|'unanswerable', value: unknown, error: string|null}}
  */
-export function askStraight(run, question, installation) {
+export function askStraight(run: Run, question: string, installation: string) {
   try {
-    return { how: 'straight', value: STRAIGHT[question](run), error: null };
-  } catch (straightError) {
-    const patch = PATCHED[installation]?.[question];
+    return { how: 'straight', value: STRAIGHT[question]!(run), error: null };
+  } catch (error) {
+    const straightError = error as Unanswerable;
+    const patch = PATCHED[installation as keyof typeof PATCHED]?.[question];
 
     if (!patch) {
       return { how: 'unanswerable', value: null, error: straightError.message };
@@ -172,7 +180,8 @@ export function askStraight(run, question, installation) {
 
     try {
       return { how: 'patched', value: patch(run), error: null };
-    } catch (patchedError) {
+    } catch (thrown) {
+      const patchedError = thrown as Unanswerable;
       return {
         how: 'unanswerable',
         value: null,
@@ -183,8 +192,8 @@ export function askStraight(run, question, installation) {
 }
 
 /** `[{k, n}]` → `{k: n}`, with nulls dropped the way a GROUP BY leaves them. */
-function asCounts(rows) {
-  const out = {};
+function asCounts(rows: Array<Record<string, unknown>>): Record<string, number> {
+  const out: Record<string, number> = {};
 
   for (const row of rows) {
     if (row.k === null || row.k === undefined || row.k === '') continue;

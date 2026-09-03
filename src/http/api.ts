@@ -16,28 +16,31 @@
  * something you can operate rather than something you have to be told.
  */
 
+import type { Dialect, Filters, Run, Schema } from '../ask/shapes.ts';
+
 import fs from 'node:fs';
 import http from 'node:http';
+import type { IncomingMessage, ServerResponse } from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { INSTALLATIONS, open } from '../fixtures/installations.js';
-import { asCsv, studies } from '../ask/studies.js';
-import { askStraight } from '../ask/straight.js';
-import { devices } from '../ask/devices.js';
-import { heatmap } from '../ask/heatmap.js';
-import { modalities } from '../ask/modalities.js';
-import { resolve, resolution } from '../db/schema.js';
-import { runner } from '../db/sqlite.js';
-import { sqlite } from '../db/dialect.js';
-import { storage, whenItRunsOut } from '../ask/storage.js';
-import { summary } from '../ask/summary.js';
-import { trend } from '../ask/trend.js';
+import { INSTALLATIONS, open } from '../fixtures/installations.ts';
+import { asCsv, studies } from '../ask/studies.ts';
+import { askStraight } from '../ask/straight.ts';
+import { devices } from '../ask/devices.ts';
+import { heatmap } from '../ask/heatmap.ts';
+import { modalities } from '../ask/modalities.ts';
+import { resolve, resolution } from '../db/schema.ts';
+import { runner } from '../db/sqlite.ts';
+import { sqlite } from '../db/dialect.ts';
+import { storage, whenItRunsOut } from '../ask/storage.ts';
+import { summary } from '../ask/summary.ts';
+import { trend } from '../ask/trend.ts';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(here, '..', '..', 'public');
 
-const TYPES = {
+const TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
@@ -59,7 +62,7 @@ function everything() {
 
   for (const one of INSTALLATIONS) {
     const { db } = open(one.name);
-    const run = runner(db);
+    const run = runner(db as unknown as Parameters<typeof runner>[0]);
 
     held.set(one.name, {
       ...one,
@@ -72,19 +75,21 @@ function everything() {
   return held;
 }
 
-export function service({ log = () => {} } = {}) {
+export type Log = (level: string, message: string, detail?: Record<string, unknown>) => void;
+
+export function service({ log = () => {} }: { log?: Log } = {}) {
   const held = everything();
   const capacityGB = Number(process.env.PACS_CAPACITY_GB) || null;
 
   const server = http.createServer((request, response) => {
-    const at = new URL(request.url, 'http://127.0.0.1');
+    const at = new URL(request.url ?? '/', 'http://127.0.0.1');
 
     try {
       if (at.pathname.startsWith('/api/')) return api(at, request, response);
       return serve(at, response);
     } catch (error) {
-      log('error', 'the request could not be handled', { where: at.pathname, why: error.message });
-      json(response, 500, { error: error.message });
+      log('error', 'the request could not be handled', { where: at.pathname, why: error instanceof Error ? error.message : String(error) });
+      json(response, 500, { error: error instanceof Error ? error.message : String(error) });
     }
   });
 
@@ -92,7 +97,7 @@ export function service({ log = () => {} } = {}) {
 
   // -------------------------------------------------------------------------
 
-  function api(at, request, response) {
+  function api(at: URL, request: IncomingMessage, response: ServerResponse): unknown {
     const which = at.searchParams.get('installation') ?? INSTALLATIONS[0].name;
     const site = held.get(which);
 
@@ -114,7 +119,10 @@ export function service({ log = () => {} } = {}) {
     };
 
     const { run, schema } = site;
-    const ask = (what) => what(run, sqlite, schema, filters);
+    // Every question in `src/ask/` takes the same four things, which is what
+    // lets this be one line instead of eight.
+    const ask = <T>(what: (r: Run, d: Dialect, s: Schema, f: Filters) => T): T =>
+      what(run, sqlite, schema, filters);
 
     if (at.pathname === '/api/health') {
       return json(response, 200, {
@@ -190,8 +198,8 @@ export function service({ log = () => {} } = {}) {
   }
 
   /** The same eight questions, with the SQL written straight. */
-  function straightSide(run, which) {
-    const out = {};
+  function straightSide(run: Run, which: string) {
+    const out: Record<string, { how: string; value: unknown; error: string | null }> = {};
 
     for (const question of [
       'how many studies',
@@ -202,9 +210,9 @@ export function service({ log = () => {} } = {}) {
     ]) {
       try {
         const said = askStraight(run, question, which);
-        out[question] = { how: said.how, value: said.value, error: said.error };
+        out[question as string] = { how: said.how, value: said.value, error: said.error };
       } catch (error) {
-        out[question] = { how: 'threw', value: null, error: error.message };
+        out[question as string] = { how: 'threw', value: null, error: error instanceof Error ? error.message : String(error) };
       }
     }
 
@@ -220,7 +228,7 @@ export function service({ log = () => {} } = {}) {
  * remembers per origin, so somebody who ran a different project on this port
  * has that project's answers in the same drawer.
  */
-function serve(at, response) {
+function serve(at: URL, response: ServerResponse): void {
   const name = at.pathname === '/' ? 'index.html' : at.pathname.slice(1);
   const file = path.join(PUBLIC, name);
 
@@ -244,7 +252,7 @@ function serve(at, response) {
   response.end(fs.readFileSync(file));
 }
 
-function json(response, status, body) {
+function json(response: ServerResponse, status: number, body: unknown): void {
   const text = JSON.stringify(body, null, 2);
 
   response.writeHead(status, {

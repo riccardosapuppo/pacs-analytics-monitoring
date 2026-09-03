@@ -41,21 +41,23 @@
  * without inventing a division, so they are not divided.
  */
 
-import { parameters } from '../db/sqlite.js';
-import { modalityExpression } from '../db/schema.js';
-import { within } from './dates.js';
+import type { Bind, Dialect, Filters, Run, Schema } from './shapes.ts';
+
+import { parameters } from '../db/sqlite.ts';
+import { modalityExpression } from '../db/schema.ts';
+import { within } from './dates.ts';
 
 /** DICOM value multiplicity: one field, several values, backslash between. */
 export const DELIMITER = String.fromCharCode(92);
 
-export function splitModalities(value) {
+export function splitModalities(value: unknown): string[] {
   return String(value ?? '')
     .split(DELIMITER)
     .map((one) => one.trim().toUpperCase())
     .filter(Boolean);
 }
 
-export function modalities(run, d, schema, filters = {}) {
+export function modalities(run: Run, d: Dialect, schema: Schema, filters: Filters = {}) {
   if (!schema.modalityFrom) {
     return {
       available: false,
@@ -102,7 +104,7 @@ export function modalities(run, d, schema, filters = {}) {
 }
 
 /** The modality is a column on Study: an ordinary grouped count. */
-function fromStudy(run, d, schema, filters) {
+function fromStudy(run: Run, d: Dialect, schema: Schema, filters: Filters) {
   const bind = parameters(d);
   const expression = modalityExpression(schema, d, 's');
 
@@ -132,7 +134,7 @@ function fromStudy(run, d, schema, filters) {
  * Doing it in one statement would mean summing across the join, which is the
  * multiplication this whole file exists to avoid.
  */
-function fromSeries(run, d, schema, filters) {
+function fromSeries(run: Run, d: Dialect, schema: Schema, filters: Filters) {
   const bind = parameters(d);
   const where = within(schema, d, bind, filters, 's');
 

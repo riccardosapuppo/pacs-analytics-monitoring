@@ -20,14 +20,16 @@
  * `src/db/dialect.js`) before they are quoted.
  */
 
-import { parameters } from '../db/sqlite.js';
-import { fromDicomDate, within } from './dates.js';
-import { modalityExpression } from '../db/schema.js';
+import type { Bind, Dialect, Filters, Run, Schema } from './shapes.ts';
+
+import { parameters } from '../db/sqlite.ts';
+import { fromDicomDate, within } from './dates.ts';
+import { modalityExpression } from '../db/schema.ts';
 
 /** The most any one page may ask for. Above this it is an export, not a page. */
 export const MOST_PER_PAGE = 200;
 
-export function studies(run, d, schema, filters = {}) {
+export function studies(run: Run, d: Dialect, schema: Schema, filters: Filters = {}) {
   const page = Math.max(1, Number(filters.page) || 1);
   const size = Math.min(MOST_PER_PAGE, Math.max(1, Number(filters.pageSize) || 50));
 
@@ -77,7 +79,7 @@ export function studies(run, d, schema, filters = {}) {
  */
 const ESCAPE = String.fromCharCode(92);
 
-export function literally(value) {
+export function literally(value: unknown): string {
   return String(value).replace(new RegExp(`[${ESCAPE}%_]`, 'g'), (one) => ESCAPE + one);
 }
 
@@ -87,10 +89,10 @@ export function literally(value) {
  * The pattern is built here and bound as a value, so nothing a caller types
  * reaches the SQL text — only the `%` at each end, which this file put there.
  */
-function whereFor(schema, d, bind, filters) {
+function whereFor(schema: Schema, d: Dialect, bind: Bind, filters: Filters): string {
   const clauses = [within(schema, d, bind, filters, 's')];
 
-  const like = (column, value) => {
+  const like = (column: string | null, value: string | undefined) => {
     if (!value || !column) return;
     clauses.push(`${d.quote(column)} LIKE ${bind.add(`%${literally(value)}%`)} ESCAPE '${ESCAPE}'`);
   };
@@ -117,7 +119,7 @@ function whereFor(schema, d, bind, filters) {
   return clauses.join(' AND ');
 }
 
-function selectList(schema, d) {
+function selectList(schema: Schema, d: Dialect): string {
   const modality = modalityExpression(schema, d, 's');
 
   const columns = [
@@ -148,7 +150,7 @@ function selectList(schema, d) {
   ].join(',\n            ');
 }
 
-function asStudy(row, schema) {
+function asStudy(row: Record<string, unknown>, schema: Schema) {
   return {
     uid: row.uid ?? null,
     accession: row.accession ?? null,
@@ -166,7 +168,7 @@ function asStudy(row, schema) {
 }
 
 /** `'093015'` → `'09:30'`. Anything that is not six digits comes back as null. */
-function readTime(value) {
+function readTime(value: unknown): string | null {
   const text = String(value ?? '');
   return /^\d{4,6}$/.test(text) ? `${text.slice(0, 2)}:${text.slice(2, 4)}` : null;
 }
@@ -190,10 +192,10 @@ function readTime(value) {
  * beginning `=` is a way to make a spreadsheet do something on somebody else's
  * behalf.
  */
-export function asCsv(rows, { separator = ';', bom = true } = {}) {
+export function asCsv(rows: Array<Record<string, unknown>>, { separator = ';', bom = true }: { separator?: string; bom?: boolean } = {}): string {
   const columns = ['uid', 'accession', 'date', 'time', 'modality', 'description', 'device', 'series', 'instances', 'sizeKB'];
 
-  const cell = (value) => {
+  const cell = (value: unknown): string => {
     if (value === null || value === undefined) return '';
 
     let text = String(value);

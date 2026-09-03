@@ -32,6 +32,12 @@ jobs:
       - name: the parts
         run: npm test
 
+      - name: the types
+        # `tsc` produces nothing here: there is no build. It is a checker, and
+        # `erasableSyntaxOnly` in tsconfig.json makes it also the guarantee that
+        # Node can still run these files without one.
+        run: npm run typecheck
+
       - name: the claim
         # Fails the run if the side that reads the schema is not right
         # everywhere. Not a threshold: the six installations hold the same
@@ -52,7 +58,7 @@ jobs:
         # to the thing it starts -- the check that catches a project which
         # builds and tests and does not run.
         run: |
-          PORT=3899 node src/index.js --no-open &
+          PORT=3899 node src/index.ts --no-open &
           service=$!
           trap 'kill $service 2>/dev/null || true' EXIT
 

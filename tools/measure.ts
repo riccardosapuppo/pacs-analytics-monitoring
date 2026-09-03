@@ -36,13 +36,13 @@
  * in which that is acceptable.
  */
 
-import { INSTALLATIONS, open } from '../src/fixtures/installations.js';
-import { QUESTIONS, ABOUT, askResolved } from '../src/measure/questions.js';
-import { askStraight } from '../src/ask/straight.js';
-import { judge, truthFor } from '../src/measure/truth.js';
-import { resolve } from '../src/db/schema.js';
-import { runner } from '../src/db/sqlite.js';
-import { sqlite } from '../src/db/dialect.js';
+import { INSTALLATIONS, open } from '../src/fixtures/installations.ts';
+import { QUESTIONS, ABOUT, askResolved } from '../src/measure/questions.ts';
+import { askStraight } from '../src/ask/straight.ts';
+import { judge, truthFor } from '../src/measure/truth.ts';
+import { mustResolve } from '../src/db/schema.ts';
+import { runner } from '../src/db/sqlite.ts';
+import { sqlite } from '../src/db/dialect.ts';
 
 const detail = process.argv.includes('--detail');
 
@@ -50,12 +50,12 @@ const results = [];
 
 for (const installation of INSTALLATIONS) {
   const { db } = open(installation.name);
-  const run = runner(db);
-  const schema = resolve(run, sqlite);
+  const run = runner(db as unknown as Parameters<typeof runner>[0]);
+  const schema = mustResolve(run, sqlite);
   const truth = truthFor(installation.name);
 
   for (const question of QUESTIONS) {
-    const wanted = truth[question];
+    const wanted = truth[question as keyof typeof truth];
 
     results.push({
       installation: installation.name,
@@ -115,13 +115,13 @@ console.log('\nBy question — where the straight version comes apart:\n');
 
 for (const question of QUESTIONS) {
   const mine = results.filter((one) => one.question === question);
-  const count = (what) => mine.filter((one) => one.straight.outcome === what).length;
+  const count = (what: string) => mine.filter((one) => one.straight.outcome === what).length;
 
   console.log(
     `  ${question.padEnd(30)} ` +
       `${String(count('patched')).padStart(2)} patched  ` +
       `${String(count('loud')).padStart(2)} loud  ` +
-      `${String(count('silent')).padStart(2)} SILENT   ${ABOUT[question]}`
+      `${String(count('silent')).padStart(2)} SILENT   ${ABOUT[question as keyof typeof ABOUT]}`
   );
 }
 
@@ -129,8 +129,8 @@ if (detail) {
   console.log('\nEvery cell:\n');
 
   for (const one of results) {
-    const mark = (side) =>
-      ({ right: 'ok     ', patched: 'patched', loud: 'LOUD   ', silent: 'SILENT ' })[side.outcome];
+    const mark = (side: { outcome: string }) =>
+      ({ right: 'ok     ', patched: 'patched', loud: 'LOUD   ', silent: 'SILENT ' })[side.outcome as 'right' | 'patched' | 'loud' | 'silent'];
     console.log(`  ${one.installation.padEnd(width)}  ${one.question.padEnd(30)}  straight ${mark(one.straight)}  read ${mark(one.resolved)}`);
     if (one.straight.why) console.log(`      straight: ${one.straight.why}`);
     if (one.resolved.why) console.log(`      read:     ${one.resolved.why}`);
@@ -175,13 +175,17 @@ if (readWrong.length > 0) {
  * The three that are not `silent` all have one thing in common: **somebody
  * knows**. That is the line the whole measurement is drawn around.
  */
-function outcomeOf(ask, wanted) {
-  let said;
+/** What `askResolved` and `askStraight` both return. */
+type Said = { how: string; value: unknown; error: string | null };
+
+function outcomeOf(ask: () => unknown, wantedIn: unknown) {
+  const wanted = wantedIn as { unanswerable?: boolean } | null;
+  let said: Said;
 
   try {
-    said = ask();
+    said = ask() as Said;
   } catch (error) {
-    return { outcome: 'loud', why: error.message, how: 'threw' };
+    return { outcome: 'loud', why: (error instanceof Error ? error.message : String(error)), how: 'threw' };
   }
 
   if (said.how === 'unanswerable') {
@@ -189,7 +193,7 @@ function outcomeOf(ask, wanted) {
     // nothing to answer with. Where the truth has an answer, refusing is a
     // loud failure like any other.
     if (wanted && wanted.unanswerable) return { outcome: 'right', why: '', how: said.how };
-    return { outcome: 'loud', why: said.error, how: said.how };
+    return { outcome: 'loud', why: said.error ?? '', how: said.how };
   }
 
   const verdict = judge(wanted, said.value);
@@ -201,8 +205,8 @@ function outcomeOf(ask, wanted) {
   return { outcome: said.how === 'patched' ? 'patched' : 'right', why: '', how: said.how };
 }
 
-function score(sides) {
-  const count = (what) => sides.filter((one) => one.outcome === what).length;
+function score(sides: Array<{ outcome: string }>) {
+  const count = (what: string) => sides.filter((one) => one.outcome === what).length;
   const parts = [`${count('right')} right`];
 
   if (count('patched')) parts.push(`${count('patched')} patched`);

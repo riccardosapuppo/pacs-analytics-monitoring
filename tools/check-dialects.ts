@@ -29,25 +29,27 @@
  * ask. Each is a property with a reason.
  */
 
-import { INSTALLATIONS, open } from '../src/fixtures/installations.js';
-import { DIALECTS, postgres, sqlserver } from '../src/db/dialect.js';
-import { devices } from '../src/ask/devices.js';
-import { heatmap } from '../src/ask/heatmap.js';
-import { modalities } from '../src/ask/modalities.js';
-import { resolve } from '../src/db/schema.js';
-import { runner } from '../src/db/sqlite.js';
-import { sqlite } from '../src/db/dialect.js';
-import { storage } from '../src/ask/storage.js';
-import { studies } from '../src/ask/studies.js';
-import { summary } from '../src/ask/summary.js';
-import { trend } from '../src/ask/trend.js';
+import type { Dialect } from '../src/db/dialect.ts';
+import type { Run } from '../src/db/sqlite.ts';
+import { INSTALLATIONS, open } from '../src/fixtures/installations.ts';
+import { DIALECTS, postgres, sqlserver } from '../src/db/dialect.ts';
+import { devices } from '../src/ask/devices.ts';
+import { heatmap } from '../src/ask/heatmap.ts';
+import { modalities } from '../src/ask/modalities.ts';
+import { mustResolve } from '../src/db/schema.ts';
+import { runner } from '../src/db/sqlite.ts';
+import { sqlite } from '../src/db/dialect.ts';
+import { storage } from '../src/ask/storage.ts';
+import { studies } from '../src/ask/studies.ts';
+import { summary } from '../src/ask/summary.ts';
+import { trend } from '../src/ask/trend.ts';
 
 const show = process.argv.includes('--show');
 
 let checks = 0;
 let bad = 0;
 
-function must(what, condition, detail) {
+function must(what: string, condition: boolean, detail?: unknown): void {
   checks += 1;
 
   if (condition) {
@@ -68,10 +70,10 @@ function must(what, condition, detail) {
  * what the schema says, not on which dialect will be spoken, and resolving it
  * for real is what stops this checking queries against an imaginary database.
  */
-function statementsFor(d, installation) {
+function statementsFor(d: Dialect, installation: string) {
   const { db } = open(installation);
-  const real = runner(db);
-  const schema = resolve(real, sqlite);
+  const real = runner(db as unknown as Parameters<typeof runner>[0]);
+  const schema = mustResolve(real, sqlite);
 
   const said = [];
 
@@ -82,11 +84,12 @@ function statementsFor(d, installation) {
   // that has nothing to do with the dialect it is looking at. Every field
   // reads as undefined and every caller already copes with that, because a
   // column that is not there is an ordinary outcome here.
-  const record = (sql, params = []) => {
+  const record = ((sql: string, params: unknown[] = []) => {
     said.push({ sql, params });
     return [{}];
-  };
-  record.one = () => ({});
+  }) as unknown as Run;
+
+  (record as unknown as { one: () => unknown }).one = () => ({});
 
   const filters = { from: '2024-01-01', to: '2024-12-31' };
 
@@ -104,7 +107,7 @@ function statementsFor(d, installation) {
     } catch (error) {
       // A question that cannot even be assembled for a dialect is a failure of
       // this check, not something to skip past quietly.
-      said.push({ sql: `THREW: ${error.message}`, params: [] });
+      said.push({ sql: `THREW: ${(error instanceof Error ? error.message : String(error))}`, params: [] });
     }
   }
 
@@ -117,7 +120,7 @@ console.log('\nWhat the two unexecuted dialects are emitting.\n');
 for (const [name, d] of [
   ['SQL Server', sqlserver],
   ['PostgreSQL', postgres],
-]) {
+] as Array<[string, Dialect]>) {
   console.log(`${name}`);
 
   const all = statementsFor(d, 'as-documented').concat(statementsFor(d, 'modality-on-series'));

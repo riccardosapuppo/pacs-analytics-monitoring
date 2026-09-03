@@ -24,18 +24,18 @@
  * baseline in order to beat it.
  */
 
-import { COMBINED, STUDIES, withCombinedModalities, withRubbishDates } from '../fixtures/facts.js';
-import { splitModalities } from '../ask/modalities.js';
+import { COMBINED, STUDIES, withCombinedModalities, withRubbishDates } from '../fixtures/facts.ts';
+import { splitModalities } from '../ask/modalities.ts';
 
 /** The studies each installation actually holds. */
-export function studiesIn(name) {
+export function studiesIn(name: string) {
   if (name === 'undatable-rows') return withRubbishDates();
   if (name === 'combined-modalities') return withCombinedModalities();
   return STUDIES;
 }
 
 /** Eight digits, all of them digits. The same rule the queries apply, stated once. */
-export function datable(study) {
+export function datable(study: Record<string, unknown>): boolean {
   return typeof study.date === 'string' && /^\d{8}$/.test(study.date);
 }
 
@@ -47,7 +47,7 @@ export function datable(study) {
  * holding the same studies must have the same answers, and the only way to be
  * sure of that is for the truth not to know their names.
  */
-export function truthFor(name) {
+export function truthFor(name: string) {
   const held = studiesIn(name);
   const dated = held.filter(datable);
   const undated = held.length - dated.length;
@@ -83,25 +83,25 @@ export function truthFor(name) {
 
     'studies per device': hasDevice ? tally(dated.map((one) => one.device)) : { unanswerable: true },
 
-    'studies per month': tally(dated.map((one) => one.date.slice(0, 6))),
+    'studies per month': tally(dated.map((one) => String(one.date).slice(0, 6))),
 
-    'studies in one month': dated.filter((one) => one.date >= '20240301' && one.date <= '20240331').length,
+    'studies in one month': dated.filter((one) => String(one.date) >= '20240301' && String(one.date) <= '20240331').length,
 
     'the busiest hour of the week': busiest(dated),
   };
 }
 
 /** Monday = 0, from a `YYYYMMDD` string, without a date library. */
-export function weekdayOf(date) {
+export function weekdayOf(date: string): number {
   const at = Date.UTC(Number(date.slice(0, 4)), Number(date.slice(4, 6)) - 1, Number(date.slice(6, 8)));
   return (new Date(at).getUTCDay() + 6) % 7;
 }
 
-function busiest(studies) {
+function busiest(studies: Array<Record<string, unknown>>) {
   const counts = new Map();
 
   for (const one of studies) {
-    const key = `${weekdayOf(one.date)}:${Number(one.time.slice(0, 2))}`;
+    const key = `${weekdayOf(String(one.date))}:${Number(String(one.time).slice(0, 2))}`;
     counts.set(key, (counts.get(key) ?? 0) + 1);
   }
 
@@ -120,8 +120,8 @@ function busiest(studies) {
   return best;
 }
 
-function tally(values) {
-  const out = {};
+function tally(values: unknown[]): Record<string, number> {
+  const out: Record<string, number> = {};
 
   for (const value of values) {
     if (value === null || value === undefined || value === '') continue;
@@ -131,8 +131,8 @@ function tally(values) {
   return out;
 }
 
-function sum(values) {
-  return values.reduce((total, one) => total + one, 0);
+function sum(values: unknown[]): number {
+  return values.reduce((total: number, one) => total + Number(one), 0);
 }
 
 /**
@@ -144,7 +144,11 @@ function sum(values) {
  *
  * @returns {{right: boolean, why: string}}
  */
-export function judge(wanted, got) {
+type Answer = { unanswerable?: boolean } & Record<string, unknown>;
+
+export function judge(wantedIn: unknown, gotIn: unknown) {
+  const wanted = wantedIn as Answer;
+  const got = gotIn as Answer;
   if (got === null || got === undefined) return { right: false, why: 'no answer' };
 
   if (wanted && wanted.unanswerable) {
@@ -179,7 +183,7 @@ export function judge(wanted, got) {
     : { right: false, why: wrong.slice(0, 3).join('; ') + (wrong.length > 3 ? ` (+${wrong.length - 3} more)` : '') };
 }
 
-function round(value) {
+function round(value: unknown): unknown {
   return typeof value === 'number' && !Number.isInteger(value) ? value.toFixed(3) : value;
 }
 

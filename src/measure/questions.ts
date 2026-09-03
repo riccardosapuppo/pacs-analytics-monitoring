@@ -7,11 +7,13 @@
  * question.
  */
 
-import { devices } from '../ask/devices.js';
-import { heatmap } from '../ask/heatmap.js';
-import { modalities } from '../ask/modalities.js';
-import { summary } from '../ask/summary.js';
-import { trend } from '../ask/trend.js';
+import type { Dialect, Run, Schema } from '../ask/shapes.ts';
+
+import { devices } from '../ask/devices.ts';
+import { heatmap } from '../ask/heatmap.ts';
+import { modalities } from '../ask/modalities.ts';
+import { summary } from '../ask/summary.ts';
+import { trend } from '../ask/trend.ts';
 
 export const QUESTIONS = [
   'how many studies',
@@ -41,7 +43,7 @@ export const ABOUT = {
 };
 
 /** Ask one question of the resolved schema. Throws only on a real fault. */
-export function askResolved(run, d, schema, question) {
+export function askResolved(run: Run, d: Dialect, schema: Schema, question: string) {
   if (question === 'how many studies') {
     return summary(run, d, schema, {}).studies;
   }
@@ -57,13 +59,13 @@ export function askResolved(run, d, schema, question) {
   if (question === 'studies per modality') {
     const said = modalities(run, d, schema, {});
     if (!said.available) return { unanswerable: true, why: said.why };
-    return Object.fromEntries(said.rows.map((one) => [one.modality, one.studies]));
+    return Object.fromEntries(said.rows.map((one) => [one.modality, Number(one.studies)]));
   }
 
   if (question === 'studies per device') {
     const said = devices(run, d, schema, {});
     if (!said.available) return { unanswerable: true, why: said.why };
-    return Object.fromEntries(said.rows.map((one) => [one.device, one.studies]));
+    return Object.fromEntries(said.rows.map((one) => [one.device, Number(one.studies)]));
   }
 
   if (question === 'studies per month') {
@@ -72,8 +74,8 @@ export function askResolved(run, d, schema, question) {
     // about the archive.
     return Object.fromEntries(
       trend(run, d, schema, { granularity: 'month' })
-        .rows.filter((one) => one.studies > 0)
-        .map((one) => [one.bucket, one.studies])
+        .rows.filter((one) => Number(one.studies) > 0)
+        .map((one) => [one.bucket, Number(one.studies)])
     );
   }
 
@@ -84,7 +86,7 @@ export function askResolved(run, d, schema, question) {
   if (question === 'the busiest hour of the week') {
     const said = heatmap(run, d, schema, {});
     if (!said.available) return { unanswerable: true, why: said.why };
-    return `${said.busiest.weekday}:${said.busiest.hour}`;
+    return `${said.busiest!.weekday}:${said.busiest!.hour}`;
   }
 
   throw new Error(`nothing asks "${question}"`);

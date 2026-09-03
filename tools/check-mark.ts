@@ -46,12 +46,14 @@ if (!marked) {
  * was compared only on its rectangles would compare nothing against nothing and
  * report a match.
  */
-function shapes(source) {
-  const found = [];
+type Shape = Record<string, number | string | null>;
+
+function shapes(source: string): Shape[] {
+  const found: Shape[] = [];
 
   for (const one of source.matchAll(/<(rect|circle)\b([^>]*)>/g)) {
     const attributes = one[2] ?? '';
-    const number = (name) => {
+    const number = (name: string): number | null => {
       const hit = attributes.match(new RegExp(`\\b${name}="([\\d.]+)"`));
       return hit ? Number(hit[1]) : null;
     };
@@ -123,7 +125,11 @@ for (const [where, colour] of Object.entries(grounds)) {
   }
 }
 
-const distinct = new Set(Object.values(grounds).filter(Boolean).map((one) => one.toLowerCase()));
+const distinct = new Set(
+  Object.values(grounds)
+    .filter((one): one is string => typeof one === 'string')
+    .map((one) => one.toLowerCase())
+);
 
 if (distinct.size > 1) {
   console.error(

@@ -36,7 +36,7 @@ export async function startTheService({ quiet = true } = {}) {
     return { base: already, mine: false, stop: async () => {} };
   }
 
-  const child = spawn(process.execPath, [path.join(root, 'src', 'index.js'), '--port', String(CHECK_PORT), '--no-open'], {
+  const child = spawn(process.execPath, [path.join(root, 'src', 'index.ts'), '--port', String(CHECK_PORT), '--no-open'], {
     cwd: root,
     stdio: ['ignore', 'pipe', 'pipe'],
   });
@@ -45,7 +45,7 @@ export async function startTheService({ quiet = true } = {}) {
   child.stderr.setEncoding('utf8');
 
   let said = '';
-  const watch = (chunk) => {
+  const watch = (chunk: string): void => {
     said += chunk;
     if (!quiet) process.stderr.write(chunk);
   };
@@ -90,7 +90,10 @@ export async function startTheService({ quiet = true } = {}) {
   }
 }
 
-export async function withTheService(body, options = {}) {
+export async function withTheService<T>(
+  body: (base: string) => Promise<T>,
+  options: { quiet?: boolean } = {}
+): Promise<T> {
   const service = await startTheService(options);
 
   try {

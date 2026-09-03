@@ -6,13 +6,20 @@
  */
 
 import assert from 'node:assert/strict';
+import type { Schema } from '../src/db/schema.ts';
 import { describe, it } from 'node:test';
 
-import { bucket, datable, fromDicomDate, readBucket, toDicomDate, within } from '../src/ask/dates.js';
-import { parameters } from '../src/db/sqlite.js';
-import { sqlite } from '../src/db/dialect.js';
+import { bucket, datable, fromDicomDate, readBucket, toDicomDate, within } from '../src/ask/dates.ts';
+import { parameters } from '../src/db/sqlite.ts';
+import { sqlite } from '../src/db/dialect.ts';
 
-const schema = { date: 'StudyDate', partition: 'ServerPartitionGUID' };
+/**
+ * Only the two columns these clauses read.
+ *
+ * A real Schema has thirteen and none of the rest is looked at here, so the
+ * cast is the test saying which part of it is under test.
+ */
+const schema = { date: 'StudyDate', partition: 'ServerPartitionGUID' } as unknown as Schema;
 
 describe('reading a date somebody typed', () => {
   it('takes the three ways a person writes one', () => {

@@ -12,7 +12,9 @@
  * between a right answer and a wrong one that does not look wrong.
  */
 
-import { columnsOf, pickColumn, tablesIn } from './introspect.js';
+import { columnsOf, pickColumn, tablesIn } from './introspect.ts';
+import type { Dialect } from './dialect.ts';
+import type { Run } from './sqlite.ts';
 
 /**
  * Logical field → the names it goes by, in order of preference.
@@ -34,10 +36,40 @@ export const CANDIDATES = {
   instances: ['NumberOfStudyRelatedInstances', 'NumberOfRelatedInstances', 'InstanceCount'],
   size: ['StudySizeInKB', 'StudySizeKB', 'StudySize'],
   partition: ['ServerPartitionGUID'],
+} as const;
+
+/** The fields this project looks for, as a type rather than as strings. */
+export type Field = keyof typeof CANDIDATES;
+
+/**
+ * What was found in one database.
+ *
+ * Every column is nullable, and that is the subject of the project: an
+ * installation that does not have `StudySizeInKB` is not broken, it is a
+ * different build of the same product, and the dashboard has to say what it
+ * cannot answer rather than answer it wrongly.
+ */
+export type Schema = { [K in Field]: string | null } & {
+  ok: boolean;
+  table: string;
+  columns: Map<string, string> | null;
+  seriesTable: string | null;
+  seriesModality: string | null;
+  seriesStudyGuid: string | null;
+  partitionTable: string | null;
+  partitionGuid: string | null;
+  partitionAe: string | null;
+  partitionDescription: string | null;
+  modalityFrom: ReturnType<typeof whereModalityIs>;
+  missing: Field[];
+  notes: string[];
 };
 
+/** When there is not even a Study table to start from. */
+export type NoSchema = { ok: false; why: string; tables: string[] };
+
 /** Fields without which nothing can be answered at all. */
-const ESSENTIAL = ['guid', 'uid', 'date', 'size'];
+const ESSENTIAL: Field[] = ['guid', 'uid', 'date', 'size'];
 
 /**
  * Read the schema.
@@ -46,7 +78,7 @@ const ESSENTIAL = ['guid', 'uid', 'date', 'size'];
  * passed in rather than reached for, so this is testable against six databases
  * without any of them being a global.
  */
-export function resolve(run, d) {
+export function resolve(run: Run, d: Dialect): Schema | NoSchema {
   const tables = tablesIn(run, d);
 
   const studyTable = tables.get('study');
@@ -64,9 +96,9 @@ export function resolve(run, d) {
   const partitionTable = tables.get('serverpartition');
   const partition = partitionTable ? columnsOf(run, d, partitionTable) : null;
 
-  const found = {};
-  for (const [field, candidates] of Object.entries(CANDIDATES)) {
-    found[field] = pickColumn(study, candidates);
+  const found = {} as { [K in Field]: string | null };
+  for (const field of Object.keys(CANDIDATES) as Field[]) {
+    found[field] = pickColumn(study, CANDIDATES[field]);
   }
 
   const schema = {
@@ -93,7 +125,7 @@ export function resolve(run, d) {
     partitionGuid: partition ? pickColumn(partition, ['GUID']) : null,
     partitionAe: partition ? pickColumn(partition, ['AeTitle']) : null,
     partitionDescription: partition ? pickColumn(partition, ['Description']) : null,
-  };
+  } as Schema;
 
   schema.modalityFrom = whereModalityIs(schema);
   schema.missing = ESSENTIAL.filter((field) => !schema[field]);
@@ -103,7 +135,7 @@ export function resolve(run, d) {
   return schema;
 }
 
-function whereModalityIs(schema) {
+function whereModalityIs(schema: Schema) {
   if (schema.modality) return 'study';
   if (schema.seriesTable && schema.seriesModality && schema.seriesStudyGuid && schema.guid) {
     return 'series';
@@ -115,11 +147,17 @@ function whereModalityIs(schema) {
  * The modality of a study, as a SQL expression — or `null` when there is none
  * to be had, which is a fact and not an error.
  */
-export function modalityExpression(schema, d, alias = 's') {
+export function modalityExpression(schema: Schema, d: Dialect, alias = 's'): string | null {
   const prefix = alias ? `${alias}.` : '';
 
+  // The `!` here and below are `modalityFrom` being what it is.
+  //
+  // `whereModalityIs` returns 'study' only when `modality` is set, and
+  // 'series' only when all three of the series columns are. The narrowing is
+  // real; it just lives in another function, which is where the decision
+  // belongs.
   if (schema.modalityFrom === 'study') {
-    return `${prefix}${d.quote(schema.modality)}`;
+    return `${prefix}${d.quote(schema.modality!)}`;
   }
 
   if (schema.modalityFrom === 'series') {
@@ -128,8 +166,8 @@ export function modalityExpression(schema, d, alias = 's') {
     // the study count a study count. Which modality it picks for a mixed study
     // is a separate question, answered in `src/ask/modalities.js`.
     return (
-      `(SELECT MIN(se.${d.quote(schema.seriesModality)}) FROM ${d.quote(schema.seriesTable)} se` +
-      ` WHERE se.${d.quote(schema.seriesStudyGuid)} = ${prefix}${d.quote(schema.guid)})`
+      `(SELECT MIN(se.${d.quote(schema.seriesModality!)}) FROM ${d.quote(schema.seriesTable!)} se` +
+      ` WHERE se.${d.quote(schema.seriesStudyGuid!)} = ${prefix}${d.quote(schema.guid!)})`
     );
   }
 
@@ -144,7 +182,7 @@ export function modalityExpression(schema, d, alias = 's') {
  * their own database, and the one that says a view is unavailable is the most
  * useful line on the page.
  */
-function describe(schema) {
+function describe(schema: Schema): string[] {
   const notes = [];
 
   notes.push(`studies are in ${schema.table}`);
@@ -177,12 +215,38 @@ function describe(schema) {
  * The names this installation is using, for the diagnostic panel: logical field,
  * what it resolved to, and which candidate that was.
  */
-export function resolution(schema) {
-  return Object.entries(CANDIDATES).map(([field, candidates]) => ({
-    field,
-    resolved: schema[field] ?? null,
-    candidates,
-    // Which of the candidates won, so "we took the second choice" is visible.
-    position: schema[field] ? candidates.findIndex((c) => c.toLowerCase() === schema[field].toLowerCase()) : -1,
-  }));
+export function resolution(schema: Schema) {
+  return (Object.keys(CANDIDATES) as Field[]).map((field) => {
+    const candidates = CANDIDATES[field];
+    const resolved = schema[field] ?? null;
+
+    return {
+      field,
+      resolved,
+      candidates,
+      // Which of the candidates won, so "we took the second choice" is visible.
+      position: resolved
+        ? candidates.findIndex((c: string) => c.toLowerCase() === resolved.toLowerCase())
+        : -1,
+    };
+  });
+}
+
+/**
+ * The schema, or a refusal to carry on.
+ *
+ * `resolve` returns a union because "there is no Study table" is a real answer
+ * a service has to render. Everything downstream of that check — the queries,
+ * the tests, the measurement — has already established there is one, and was
+ * saying so with a cast. This says it once, and throws where the cast would
+ * have lied.
+ */
+export function mustResolve(run: Run, d: Dialect): Schema {
+  const said = resolve(run, d);
+
+  if (!('table' in said)) {
+    throw new Error(`this database cannot be read: ${said.why}`);
+  }
+
+  return said;
 }

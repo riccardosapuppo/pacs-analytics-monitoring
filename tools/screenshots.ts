@@ -18,7 +18,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 
-import { startTheService } from './with-the-service.mjs';
+import { startTheService } from './with-the-service.ts';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const DOCS = path.join(here, '..', 'docs');
@@ -36,7 +36,7 @@ fs.mkdirSync(DOCS, { recursive: true });
 
 const service = await startTheService();
 const browser = await chromium.launch({ channel: 'msedge' });
-const say = (name) => console.log(`  docs/${name}`);
+const say = (name: string): void => console.log(`  docs/${name}`);
 
 try {
   const page = await browser.newPage({
@@ -45,10 +45,10 @@ try {
     reducedMotion: 'reduce',
   });
 
-  const look = async (at) => {
+  const look = async (at: string) => {
     await page.selectOption('#installation', at);
     await page.waitForFunction(
-      (name) => document.getElementById('differs-says')?.dataset.showing === name,
+      (name: string) => document.getElementById('differs-says')?.dataset.showing === name,
       at,
       { timeout: 15_000 }
     );
@@ -80,7 +80,7 @@ try {
   //    above it traceable to a column.
   await look('older-column-names');
   await page.evaluate(() => {
-    document.getElementById('found').open = true;
+    (document.getElementById('found') as HTMLDetailsElement).open = true;
   });
   await page.waitForTimeout(400);
   await page.locator('#found').screenshot({ path: path.join(DOCS, 'what-it-found.png') });
@@ -107,14 +107,14 @@ try {
         .join('')
   );
 
-  await mark.waitForFunction(() => [...document.images].every((one) => one.complete));
+  await mark.waitForFunction(() => Array.from(document.images).every((one) => one.complete));
   await mark.screenshot({ path: path.join(DOCS, 'the-mark.png') });
   say('the-mark.png');
   await mark.close();
 
   await page.close();
 } catch (error) {
-  console.error(`\nThe pictures could not be retaken: ${error.message.split('\n')[0]}`);
+  console.error(`\nThe pictures could not be retaken: ${(error instanceof Error ? error.message : String(error)).split('\n')[0]}`);
   process.exitCode = 1;
 } finally {
   await browser.close();

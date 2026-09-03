@@ -53,7 +53,7 @@ npm run measure
 Eight questions. Six installations **holding the same studies** and disagreeing
 only about how to write them down. Two ways of answering each. So every question
 has one right answer, worked out from the facts in plain JavaScript by
-[`src/measure/truth.js`](src/measure/truth.js) — never by running a query,
+[`src/measure/truth.ts`](src/measure/truth.ts) — never by running a query,
 because an expectation computed the way the answer is computed agrees with a
 bug.
 
@@ -93,7 +93,7 @@ the patches are the obvious repair rather than a bad one. And where the device
 column is missing it is *right* to refuse, which is scored as right.
 
 A comparison that had to be rigged to win would not be worth running, so
-[a browser check](tools/through-the-screen.mjs) asserts that nothing is marked
+[a browser check](tools/through-the-screen.ts) asserts that nothing is marked
 wrong on `as-documented`.
 
 ## The three that hurt
@@ -180,7 +180,13 @@ takes to mean "no studies" rather than "no column".
 - **Node 24 or newer**, and nothing else at all. No database to install, no
   container, no account, no key. `node:sqlite` is in the runtime, so the six
   installations are built in memory from
-  [`src/fixtures/facts.js`](src/fixtures/facts.js) when the service starts.
+  [`src/fixtures/facts.ts`](src/fixtures/facts.ts) when the service starts.
+- **TypeScript that Node runs directly.** From 24 the runtime strips type
+  annotations at load, so `node src/index.ts` is the whole story: no transpiler,
+  no build step, no output directory holding a stale copy of the source.
+  `erasableSyntaxOnly` in `tsconfig.json` makes `tsc` reject anything Node
+  cannot strip, so `npm run typecheck` is not only a check on the types — it is
+  the check that this still runs without a build.
 - **No runtime dependencies.** `npm install` fetches `playwright-core`, which is
   a devDependency for the two browser-driven checks and drives the **Microsoft
   Edge** already on this machine rather than downloading a browser.
@@ -211,7 +217,7 @@ PACS_CAPACITY_GB=2000 npm start        # and it will say when the volume runs ou
 
 ## Three dialects, one of them executed
 
-Every query is assembled from small pieces in [`src/db/dialect.js`](src/db/dialect.js)
+Every query is assembled from small pieces in [`src/db/dialect.ts`](src/db/dialect.ts)
 rather than written out, so the same question can be asked of SQLite, SQL Server
 or PostgreSQL without three copies drifting apart.
 
@@ -245,6 +251,7 @@ becomes a rubber stamp.
 
 ```
 npm test               # 48  the guards, the resolution, the answers, the CSV
+npm run typecheck        the types, and that Node can still run this without a build
 npm run measure        #     the claim, against six installations
 npm run check:dialects # 23  what the two unexecuted dialects emit
 npm run check:screen   # 23  the console, driven with a browser

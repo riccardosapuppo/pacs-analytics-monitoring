@@ -14,12 +14,14 @@
  * belongs in the dialect rather than in this file.
  */
 
-import { parameters } from '../db/sqlite.js';
-import { within } from './dates.js';
+import type { Bind, Dialect, Filters, Run, Schema } from './shapes.ts';
+
+import { parameters } from '../db/sqlite.ts';
+import { within } from './dates.ts';
 
 export const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
-export function heatmap(run, d, schema, filters = {}) {
+export function heatmap(run: Run, d: Dialect, schema: Schema, filters: Filters = {}) {
   if (!schema.time) {
     return {
       available: false,

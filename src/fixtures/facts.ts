@@ -25,7 +25,35 @@
  * Mulberry32 — thirty-two bits of state, cheap, and adequate for spreading
  * invented studies across a calendar.
  */
-function rolls(seed) {
+/** One invented study, as every installation stores it before renaming. */
+export type Study = {
+  uid: string;
+  accession: string;
+  patient: string;
+  date: string | null;
+  time: string;
+  description: string;
+  modality: string;
+  device: string;
+  series: number;
+  instances: number;
+  sizeKB: number;
+  partition: string | undefined;
+
+  /**
+   * What is wrong with this row on purpose, or null.
+   *
+   * The rubbish-date and combined-modality variants set it, and the measurement
+   * reads it: a study that is deliberately broken should be counted as broken
+   * rather than looked at twice.
+   */
+  dirty: string | null;
+
+  /** Set only by `withCombinedModalities`, which is why it is optional. */
+  combined?: string[];
+};
+
+function rolls(seed: number): () => number {
   let state = seed >>> 0;
 
   return () => {
@@ -96,27 +124,27 @@ export const PARTITIONS = [
 const SITE_PARTITION = new Map(PARTITIONS.map((one) => [one.ae, one.id]));
 
 /** A study UID that looks like one: a made-up root, then digits. */
-function uid(n) {
+function uid(n: number): string {
   return `1.2.826.0.1.3680043.9.7133.${1000 + n}.${20240000 + n * 7}`;
 }
 
-function between(roll, [low, high]) {
+function between(roll: () => number, [low, high]: [number, number]): number {
   return low + Math.floor(roll() * (high - low + 1));
 }
 
-function pick(roll, list) {
-  return list[Math.floor(roll() * list.length)];
+function pick<T>(roll: () => number, list: readonly T[]): T {
+  return list[Math.floor(roll() * list.length)]!;
 }
 
 /** DICOM dates and times are strings, not dates. They are strings here too. */
-function dicomDate(date) {
+function dicomDate(date: Date): string {
   const y = date.getUTCFullYear();
   const m = String(date.getUTCMonth() + 1).padStart(2, '0');
   const d = String(date.getUTCDate()).padStart(2, '0');
   return `${y}${m}${d}`;
 }
 
-function dicomTime(hour, minute, second) {
+function dicomTime(hour: number, minute: number, second: number): string {
   return [hour, minute, second].map((n) => String(n).padStart(2, '0')).join('');
 }
 
@@ -131,12 +159,13 @@ const BY_HOUR = [
   0.2, 0.12, 0.08, 0.05, 0.03,
 ];
 
-function weighted(roll, weights) {
+/** An index into `weights`, chosen in proportion to them. */
+function weighted(roll: () => number, weights: readonly number[]): number {
   const total = weights.reduce((sum, w) => sum + w, 0);
   let target = roll() * total;
 
   for (let i = 0; i < weights.length; i += 1) {
-    target -= weights[i];
+    target -= weights[i]!;
     if (target <= 0) return i;
   }
 
@@ -181,14 +210,14 @@ function build() {
     const when = new Date(FIRST_DAY + day * 86400000);
     const weekday = (when.getUTCDay() + 6) % 7; // Monday = 0
 
-    if (roll() > BY_WEEKDAY[weekday]) {
+    if (roll() > BY_WEEKDAY[weekday]!) {
       day = (day + 1 + weighted(roll, BY_WEEKDAY)) % DAYS;
     }
 
     const date = new Date(FIRST_DAY + day * 86400000);
     const hour = weighted(roll, BY_HOUR);
-    const sizeMB = between(roll, kind.sizeMB);
-    const series = between(roll, kind.series);
+    const sizeMB = between(roll, kind.sizeMB as [number, number]);
+    const series = between(roll, kind.series as [number, number]);
 
     studies.push({
       uid: uid(n),
@@ -196,7 +225,7 @@ function build() {
       patient: `PAT${String(1 + (n % 340)).padStart(6, '0')}`,
       date: dicomDate(date),
       time: dicomTime(hour, between(roll, [0, 59]), between(roll, [0, 59])),
-      description: pick(roll, DESCRIPTIONS[kind.modality]),
+      description: pick(roll, DESCRIPTIONS[kind.modality as keyof typeof DESCRIPTIONS]),
       modality: kind.modality,
       device: room.device,
       partition: SITE_PARTITION.get(room.site),
@@ -231,7 +260,7 @@ export const STUDIES = build();
  */
 export const RUBBISH_DATES = [null, '', '2024-03-05', 'UNKNOWN'];
 
-export function withRubbishDates(studies = STUDIES) {
+export function withRubbishDates(studies: Study[] = STUDIES): Study[] {
   const spoiled = studies.map((one) => ({ ...one }));
 
   // Spread across the array rather than clustered, and on studies with real
@@ -255,7 +284,7 @@ export function withRubbishDates(studies = STUDIES) {
  */
 export const COMBINED = 'CT' + String.fromCharCode(92) + 'MR';
 
-export function withCombinedModalities(studies = STUDIES) {
+export function withCombinedModalities(studies: Study[] = STUDIES): Study[] {
   const mixed = studies.map((one) => ({ ...one }));
   let seen = 0;
 

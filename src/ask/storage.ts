@@ -10,10 +10,12 @@
  * somebody's problem* — asked of a number nobody currently has.
  */
 
-import { parameters } from '../db/sqlite.js';
-import { within, year } from './dates.js';
+import type { Bind, Dialect, Filters, Run, Schema } from './shapes.ts';
 
-export function storage(run, d, schema, filters = {}) {
+import { parameters } from '../db/sqlite.ts';
+import { within, year } from './dates.ts';
+
+export function storage(run: Run, d: Dialect, schema: Schema, filters: Filters = {}) {
   const bind = parameters(d);
   const key = year(schema, d, 's');
 
@@ -53,7 +55,7 @@ export function storage(run, d, schema, filters = {}) {
  * edge: a year with four months in it is not a year with a third of the usual
  * traffic, but a line fitted through it says the archive is shrinking.
  */
-export function forecast(years, { ahead = 3, thisYear = null } = {}) {
+export function forecast(years: Array<{ year: number; gb: number }>, { ahead = 3, thisYear = null }: { ahead?: number; thisYear?: number | null } = {}) {
   const current = thisYear ?? new Date().getUTCFullYear();
   const complete = years.filter((one) => one.year < current);
 
@@ -83,7 +85,7 @@ export function forecast(years, { ahead = 3, thisYear = null } = {}) {
   }
 
   const slope = bottom === 0 ? 0 : top / bottom;
-  const at = (x) => meanY + slope * (x - meanX);
+  const at = (x: number): number => meanY + slope * (x - meanX);
 
   return {
     possible: true,
@@ -91,7 +93,7 @@ export function forecast(years, { ahead = 3, thisYear = null } = {}) {
     perYearGB: slope,
     how: 'a straight line through the complete years, and nothing more',
     years: Array.from({ length: ahead }, (_, i) => {
-      const which = complete.at(-1).year + i + 1;
+      const which = complete.at(-1)!.year + i + 1;
       return { year: which, gb: Math.max(0, at(which)) };
     }),
   };
@@ -105,12 +107,12 @@ export function forecast(years, { ahead = 3, thisYear = null } = {}) {
  * nobody has said how big the disk is, the honest answer is that there is not
  * one, rather than a number derived from a default.
  */
-export function whenItRunsOut(used, forecastResult, capacityGB) {
+export function whenItRunsOut(used: number, forecastResult: ReturnType<typeof forecast>, capacityGB: number | null) {
   if (!capacityGB) {
     return { known: false, why: 'nobody has said how large the volume is (PACS_CAPACITY_GB)' };
   }
 
-  if (!forecastResult.possible || forecastResult.perYearGB <= 0) {
+  if (!forecastResult.possible || (forecastResult.perYearGB ?? 0) <= 0) {
     return { known: false, why: 'not growing, or not enough complete years to say' };
   }
 
@@ -121,6 +123,6 @@ export function whenItRunsOut(used, forecastResult, capacityGB) {
     capacityGB,
     usedGB: used,
     percentUsed: (used / capacityGB) * 100,
-    yearsLeft: Math.max(0, left / forecastResult.perYearGB),
+    yearsLeft: Math.max(0, left / (forecastResult.perYearGB ?? 1)),
   };
 }

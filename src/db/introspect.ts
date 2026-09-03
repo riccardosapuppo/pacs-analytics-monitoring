@@ -18,11 +18,14 @@
  *     is done about it belongs to the query, not to the lookup.
  */
 
+import type { Dialect } from './dialect.ts';
+import type { Row, Run } from './sqlite.ts';
+
 /**
  * Every table in the database, as a map from lowercase name to the real one.
  */
-export function tablesIn(run, d) {
-  const rows = run(d.tables());
+export function tablesIn(run: Run, d: Dialect): Map<string, string> {
+  const rows = run<{ name: string }>(d.tables());
   return new Map(rows.map((row) => [String(row.name).toLowerCase(), String(row.name)]));
 }
 
@@ -30,8 +33,8 @@ export function tablesIn(run, d) {
  * Every column of one table, as a map from lowercase name to the real one, or
  * `null` if the table itself is not there.
  */
-export function columnsOf(run, d, table) {
-  const rows = run(d.columns(table));
+export function columnsOf(run: Run, d: Dialect, table: string): Map<string, string> | null {
+  const rows = run<{ name: string }>(d.columns(table));
   if (!rows.length) return null;
 
   return new Map(rows.map((row) => [String(row.name).toLowerCase(), String(row.name)]));
@@ -47,7 +50,7 @@ export function columnsOf(run, d, table) {
  * written to without being dropped. Preferring the newer name is the difference
  * between a storage chart that is current and one that stopped growing in 2021.
  */
-export function pickColumn(columns, candidates) {
+export function pickColumn(columns: Map<string, string> | null, candidates: readonly string[]): string | null {
   if (!columns) return null;
 
   for (const candidate of candidates) {
@@ -66,7 +69,7 @@ export function pickColumn(columns, candidates) {
  * against one of them. Every row that leaves the database goes through here, so
  * the rest of the code can read a row by a name it chose itself.
  */
-export function readable(row) {
+export function readable(row: Record<string, unknown>): Row {
   const out = Object.create(null);
 
   for (const [key, value] of Object.entries(row)) {

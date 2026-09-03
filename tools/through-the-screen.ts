@@ -18,7 +18,7 @@
 
 import { createRequire } from 'node:module';
 
-import { startTheService } from './with-the-service.mjs';
+import { startTheService } from './with-the-service.ts';
 
 const show = process.argv.includes('--show');
 
@@ -34,7 +34,7 @@ try {
 let checks = 0;
 let bad = 0;
 
-function is(what, got, wanted, detail) {
+function is(what: string, got: unknown, wanted: unknown, detail?: unknown): void {
   checks += 1;
 
   if (got === wanted) return console.log(`    ok    ${what}`);
@@ -43,7 +43,7 @@ function is(what, got, wanted, detail) {
   console.log(`    NO    ${what}\n            wanted ${JSON.stringify(wanted)}, got ${JSON.stringify(detail ?? got)}`);
 }
 
-function has(what, got, wanted) {
+function has(what: string, got: unknown, wanted: unknown): void {
   checks += 1;
 
   if (String(got ?? '').toLowerCase().includes(String(wanted).toLowerCase())) {
@@ -54,7 +54,7 @@ function has(what, got, wanted) {
   console.log(`    NO    ${what}\n            wanted something containing ${JSON.stringify(wanted)}, got ${JSON.stringify(got)}`);
 }
 
-const say = (what) => console.log(`\n  ${what}`);
+const say = (what: string): void => console.log(`\n  ${what}`);
 
 const service = await startTheService();
 const browser = await chromium.launch({ channel: 'msedge', headless: !show });
@@ -63,25 +63,25 @@ const page = await browser.newPage({ viewport: { width: 1440, height: 1200 }, re
 // Anything the page throws fails this even if every assertion passes: a screen
 // that works while quietly throwing is a screen that stops working on the next
 // browser.
-const thrown = [];
-page.on('pageerror', (error) => thrown.push(`threw: ${error.message}`));
-page.on('console', (message) => {
+const thrown: string[] = [];
+page.on('pageerror', (error: Error) => thrown.push(`threw: ${(error instanceof Error ? error.message : String(error))}`));
+page.on('console', (message: { type(): string; text(): string }) => {
   if (message.type() === 'error') thrown.push(message.text());
 });
 
 /** Change the installation and wait for the page to have caught up. */
-async function look(at) {
+async function look(at: string): Promise<void> {
   await page.selectOption('#installation', at);
   await page.waitForFunction(
-    (name) => document.getElementById('differs-says')?.dataset.showing === name,
+    (name: string) => document.getElementById('differs-says')?.dataset.showing === name,
     at,
     { timeout: 10_000 }
   );
 }
 
-const kpi = async (n) => (await page.locator('.kpis dd').nth(n).textContent()).trim();
+const kpi = async (n: number) => String(await page.locator('.kpis dd').nth(n).textContent()).trim();
 const redRows = async () =>
-  (await page.locator('#straight-list li[data-how="wrong"]').allTextContents()).map((one) =>
+  (await page.locator('#straight-list li[data-how="wrong"]').allTextContents()).map((one: string) =>
     one.replace(/\s+/g, ' ').trim()
   );
 
@@ -160,7 +160,7 @@ try {
   say('what it found, shown');
 
   await page.evaluate(() => {
-    document.getElementById('found').open = true;
+    (document.getElementById('found') as HTMLDetailsElement).open = true;
   });
   await page.waitForTimeout(300);
 
@@ -196,7 +196,7 @@ try {
   );
   is('it does not scroll sideways at 760 wide', overflow <= 1, true, String(overflow));
 } catch (error) {
-  console.error(`\n  the journey stopped: ${error.message.split('\n')[0]}`);
+  console.error(`\n  the journey stopped: ${(error instanceof Error ? error.message : String(error)).split('\n')[0]}`);
   bad += 1;
 } finally {
   await browser.close();

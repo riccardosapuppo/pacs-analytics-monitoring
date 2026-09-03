@@ -7,20 +7,22 @@
  * nobody can tell.
  */
 
-import { parameters } from '../db/sqlite.js';
-import { datable, within, withoutDateGuard } from './dates.js';
+import type { Bind, Dialect, Filters, Run, Schema } from './shapes.ts';
+
+import { parameters } from '../db/sqlite.ts';
+import { datable, within, withoutDateGuard } from './dates.ts';
 
 /**
  * `SUM` over a column that may not exist has to become a literal zero rather
  * than a missing clause, or the shape of the result changes with the schema and
  * every caller has to check.
  */
-function sum(schema, d, field, alias = 's') {
-  const column = schema[field];
+function sum(schema: Schema, d: Dialect, field: string, alias = 's'): string {
+  const column = schema[field as keyof Schema] as string | null;
   return column ? `SUM(${d.toFloat(`${alias}.${d.quote(column)}`)})` : '0';
 }
 
-export function summary(run, d, schema, filters = {}) {
+export function summary(run: Run, d: Dialect, schema: Schema, filters: Filters = {}) {
   const bind = parameters(d);
   const where = within(schema, d, bind, filters, 's');
 

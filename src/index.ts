@@ -14,18 +14,18 @@
  * so two projects sharing a port share state neither knows about.
  */
 
-import { openInABrowser } from './open-a-browser.js';
-import { service } from './http/api.js';
+import { openInABrowser } from './open-a-browser.ts';
+import { service } from './http/api.ts';
 
-function argument(name, fallback) {
+function argument(name: string, fallback: string | number): string {
   const at = process.argv.indexOf(`--${name}`);
-  return at !== -1 && process.argv[at + 1] ? process.argv[at + 1] : fallback;
+  return at !== -1 && process.argv[at + 1] ? (process.argv[at + 1] as string) : String(fallback);
 }
 
 const PORT = Number(argument('port', process.env.PORT ?? 3800));
 const HOST = argument('host', process.env.HOST ?? '127.0.0.1');
 
-function log(level, message, detail = {}) {
+function log(level: string, message: string, detail: Record<string, unknown> = {}): void {
   // One JSON object per line: a log a person greps and a log a machine parses
   // are the same log, and the moment they are not, one of them stops being kept.
   process.stdout.write(`${JSON.stringify({ at: new Date().toISOString(), level, message, ...detail })}\n`);
@@ -54,7 +54,7 @@ server.listen(PORT, HOST, () => {
  * that fixes it.
  */
 server.on('error', (error) => {
-  if (error.code === 'EADDRINUSE') {
+  if ((error as NodeJS.ErrnoException).code === 'EADDRINUSE') {
     log('error', `something is already listening on ${HOST}:${PORT}`, {
       likely: 'another copy of this, or another project using the same port',
       try: `npm start -- --port ${PORT + 1}`,

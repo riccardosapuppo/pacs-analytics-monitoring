@@ -12,10 +12,12 @@
  * reasonably interprets as "no studies" rather than "no column".
  */
 
-import { parameters } from '../db/sqlite.js';
-import { within } from './dates.js';
+import type { Bind, Dialect, Filters, Run, Schema } from './shapes.ts';
 
-export function devices(run, d, schema, filters = {}) {
+import { parameters } from '../db/sqlite.ts';
+import { within } from './dates.ts';
+
+export function devices(run: Run, d: Dialect, schema: Schema, filters: Filters = {}) {
   if (!schema.device) {
     return {
       available: false,

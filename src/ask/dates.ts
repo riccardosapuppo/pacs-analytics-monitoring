@@ -33,8 +33,10 @@
  * so is a usable number. The same number in silence is not.
  */
 
+import type { Bind, Dialect, Filters, Run, Schema } from './shapes.ts';
+
 /** `2024-03-05`, `2024/03/05`, `20240305`, a `Date` → `'20240305'`, or null. */
-export function toDicomDate(input) {
+export function toDicomDate(input: unknown): string | null {
   if (!input) return null;
 
   if (input instanceof Date) {
@@ -53,7 +55,7 @@ export function toDicomDate(input) {
 }
 
 /** `'20240305'` → `'2024-03-05'`, for reading. Anything else comes back as-is. */
-export function fromDicomDate(value) {
+export function fromDicomDate(value: unknown): string | null {
   const text = String(value ?? '');
   return /^\d{8}$/.test(text) ? `${text.slice(0, 4)}-${text.slice(4, 6)}-${text.slice(6, 8)}` : text;
 }
@@ -66,7 +68,7 @@ export function fromDicomDate(value) {
  * SQL Server, where `NOT LIKE '%[^0-9]%'` on a long string is the more
  * expensive of the two.
  */
-export function datable(schema, d, alias = '') {
+export function datable(schema: Schema, d: Dialect, alias = ''): string {
   const column = `${alias ? `${alias}.` : ''}${d.quote(schema.date)}`;
 
   return [`${column} IS NOT NULL`, `${d.length(column)} = 8`, d.digitsOnly(column)].join(' AND ');
@@ -81,7 +83,7 @@ export function datable(schema, d, alias = '') {
  * reaches the SQL text. That is worth more than any amount of escaping: there
  * is no escaping function in this directory to get wrong.
  */
-export function within(schema, d, bind, filters = {}, alias = '') {
+export function within(schema: Schema, d: Dialect, bind: Bind, filters: Filters = {}, alias = ''): string {
   const prefix = alias ? `${alias}.` : '';
   const column = `${prefix}${d.quote(schema.date)}`;
   const clauses = [datable(schema, d, alias)];
@@ -111,7 +113,7 @@ export function within(schema, d, bind, filters = {}, alias = '') {
  * as the answer it accompanies, or it reports rubbish from a site the reader is
  * not looking at.
  */
-export function withoutDateGuard(schema, d, bind, filters = {}, alias = '') {
+export function withoutDateGuard(schema: Schema, d: Dialect, bind: Bind, filters: Filters = {}, alias = ''): string {
   const prefix = alias ? `${alias}.` : '';
   const clauses = [];
 
@@ -123,12 +125,12 @@ export function withoutDateGuard(schema, d, bind, filters = {}, alias = '') {
 }
 
 /** The month a `YYYYMMDD` falls in, as a SQL expression: `'202403'`. */
-export function month(schema, d, alias = '') {
+export function month(schema: Schema, d: Dialect, alias = ''): string {
   return d.substring(`${alias ? `${alias}.` : ''}${d.quote(schema.date)}`, 1, 6);
 }
 
 /** The year, as a SQL expression: `'2024'`. */
-export function year(schema, d, alias = '') {
+export function year(schema: Schema, d: Dialect, alias = ''): string {
   return d.substring(`${alias ? `${alias}.` : ''}${d.quote(schema.date)}`, 1, 4);
 }
 
@@ -139,15 +141,15 @@ export const GRANULARITY = {
   year: 4,
 };
 
-export function bucket(schema, d, granularity, alias = '') {
-  const width = GRANULARITY[granularity];
+export function bucket(schema: Schema, d: Dialect, granularity: string, alias = ''): string {
+  const width = GRANULARITY[granularity as keyof typeof GRANULARITY];
   if (!width) throw new Error(`granularity must be one of ${Object.keys(GRANULARITY).join(', ')}`);
 
   return d.substring(`${alias ? `${alias}.` : ''}${d.quote(schema.date)}`, 1, width);
 }
 
 /** `'202403'` → `'2024-03'`; `'20240305'` → `'2024-03-05'`; `'2024'` → `'2024'`. */
-export function readBucket(key) {
+export function readBucket(key: string) {
   const text = String(key ?? '');
   if (/^\d{8}$/.test(text)) return fromDicomDate(text);
   if (/^\d{6}$/.test(text)) return `${text.slice(0, 4)}-${text.slice(4, 6)}`;

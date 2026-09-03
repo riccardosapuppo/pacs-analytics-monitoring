@@ -6,16 +6,17 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { CANDIDATES, modalityExpression, resolution, resolve } from '../src/db/schema.js';
-import { INSTALLATIONS, open } from '../src/fixtures/installations.js';
-import { pickColumn, readable } from '../src/db/introspect.js';
-import { postgres, sqlite, sqlserver } from '../src/db/dialect.js';
-import { runner } from '../src/db/sqlite.js';
+import type { Schema } from '../src/db/schema.ts';
+import { CANDIDATES, modalityExpression, resolution, mustResolve } from '../src/db/schema.ts';
+import { INSTALLATIONS, open } from '../src/fixtures/installations.ts';
+import { pickColumn, readable } from '../src/db/introspect.ts';
+import { postgres, sqlite, sqlserver } from '../src/db/dialect.ts';
+import { runner } from '../src/db/sqlite.ts';
 
-function look(at) {
+function look(at: string) {
   const { db } = open(at);
-  const run = runner(db);
-  return { schema: resolve(run, sqlite), run, db };
+  const run = runner(db as unknown as Parameters<typeof runner>[0]);
+  return { schema: mustResolve(run, sqlite), run, db };
 }
 
 describe('picking a column out of what is there', () => {
@@ -113,14 +114,15 @@ describe('where the modality is, which changes the shape of the query', () => {
     // a join multiplies every study by the number of series it contains and
     // carries its storage along, without erroring, keeping the shape of the
     // chart and changing every number on it.
-    assert.match(expression, /^\(SELECT MIN\(/);
-    assert.ok(!/\bJOIN\b/i.test(expression), expression);
+    assert.match(String(expression), /^\(SELECT MIN\(/);
+    assert.ok(!/\bJOIN\b/i.test(String(expression)), String(expression));
 
     db.close();
   });
 
   it('and where there is none at all it is null, rather than an empty string', () => {
-    const schema = { modalityFrom: null };
+    // Only the field this branch reads.
+    const schema = { modalityFrom: null } as unknown as Schema;
     assert.equal(modalityExpression(schema, sqlite, 's'), null);
   });
 });

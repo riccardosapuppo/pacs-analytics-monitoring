@@ -6,21 +6,21 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { INSTALLATIONS, open } from '../src/fixtures/installations.js';
-import { QUESTIONS, askResolved } from '../src/measure/questions.js';
-import { asCsv, studies } from '../src/ask/studies.js';
-import { forecast, whenItRunsOut } from '../src/ask/storage.js';
-import { judge, truthFor } from '../src/measure/truth.js';
-import { modalities, splitModalities } from '../src/ask/modalities.js';
-import { resolve } from '../src/db/schema.js';
-import { runner } from '../src/db/sqlite.js';
-import { sqlite } from '../src/db/dialect.js';
-import { summary } from '../src/ask/summary.js';
+import { INSTALLATIONS, open } from '../src/fixtures/installations.ts';
+import { QUESTIONS, askResolved } from '../src/measure/questions.ts';
+import { asCsv, studies } from '../src/ask/studies.ts';
+import { forecast, whenItRunsOut } from '../src/ask/storage.ts';
+import { judge, truthFor } from '../src/measure/truth.ts';
+import { modalities, splitModalities } from '../src/ask/modalities.ts';
+import { mustResolve } from '../src/db/schema.ts';
+import { runner } from '../src/db/sqlite.ts';
+import { sqlite } from '../src/db/dialect.ts';
+import { summary } from '../src/ask/summary.ts';
 
-function look(at) {
+function look(at: string) {
   const { db } = open(at);
-  const run = runner(db);
-  return { run, schema: resolve(run, sqlite), db };
+  const run = runner(db as unknown as Parameters<typeof runner>[0]);
+  return { run, schema: mustResolve(run, sqlite), db };
 }
 
 describe('the invariant this project exists to keep', () => {
@@ -33,7 +33,7 @@ describe('the invariant this project exists to keep', () => {
       const truth = truthFor(installation.name);
 
       for (const question of QUESTIONS) {
-        const verdict = judge(truth[question], askResolved(run, sqlite, schema, question));
+        const verdict = judge(truth[question as keyof typeof truth], askResolved(run, sqlite, schema, question));
         assert.ok(verdict.right, `${installation.name} · ${question}: ${verdict.why}`);
       }
 
@@ -126,26 +126,26 @@ describe('a modality field that holds more than one modality', () => {
     const { run, schema, db } = look('combined-modalities');
     const said = modalities(run, sqlite, schema, {});
 
-    assert.ok(said.overlapping > 0);
+    assert.ok(said.overlapping! > 0);
     assert.equal(said.storageOverlaps, true);
 
     const total = said.rows.reduce((n, one) => n + one.studies, 0);
     const archive = summary(run, sqlite, schema, {}).studies;
-    assert.equal(total, archive + said.overlapping, 'the overlap does not account for the difference');
+    assert.equal(total, archive + said.overlapping!, 'the overlap does not account for the difference');
 
     db.close();
   });
 });
 
 describe('the forecast', () => {
-  const years = (from, to) =>
+  const years = (from: number, to: number) =>
     Array.from({ length: to - from + 1 }, (_, i) => ({ year: from + i, gb: 100 + i * 20, studies: 0, kb: 0 }));
 
   it('refuses below three complete years, because two define a line exactly', () => {
     const said = forecast(years(2023, 2024), { thisYear: 2026 });
 
     assert.equal(said.possible, false);
-    assert.match(said.why, /2 complete years/);
+    assert.match(String(said.why), /2 complete years/);
   });
 
   it('drops the current year, which is what makes these charts turn downwards', () => {
@@ -153,14 +153,14 @@ describe('the forecast', () => {
     const said = forecast(withPartial, { thisYear: 2026 });
 
     assert.equal(said.from, 5, 'the part-year was fitted as a whole one');
-    assert.ok(said.perYearGB > 0, `a partial year dragged the line downwards: ${said.perYearGB}`);
+    assert.ok(said.perYearGB! > 0, `a partial year dragged the line downwards: ${said.perYearGB!}`);
   });
 
   it('and fits a line that is a line', () => {
     const said = forecast(years(2021, 2025), { thisYear: 2026 });
 
     assert.equal(said.possible, true);
-    assert.ok(Math.abs(said.perYearGB - 20) < 1e-6, String(said.perYearGB));
+    assert.ok(Math.abs(said.perYearGB! - 20) < 1e-6, String(said.perYearGB!));
     assert.equal(said.years[0].year, 2026);
     assert.ok(Math.abs(said.years[0].gb - 200) < 1e-6, String(said.years[0].gb));
   });
@@ -169,7 +169,7 @@ describe('the forecast', () => {
     const line = forecast(years(2021, 2025), { thisYear: 2026 });
 
     assert.equal(whenItRunsOut(500, line, null).known, false);
-    assert.match(whenItRunsOut(500, line, null).why, /how large/);
+    assert.match(String(whenItRunsOut(500, line, null).why), /how large/);
 
     const said = whenItRunsOut(500, line, 1000);
     assert.equal(said.known, true);
