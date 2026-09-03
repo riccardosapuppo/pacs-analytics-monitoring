@@ -76,23 +76,37 @@ jobs:
 
       - name: nothing here writes to the archive
         # The claim the whole project rests on. Read-only is easy to be and
-        # easy to stop being, and the day somebody adds a write is the day this
-        # goes red rather than the day somebody notices in review.
+        # easy to stop being, and the day somebody adds a write should be the
+        # day this goes red rather than the day somebody notices in review.
         run: |
-          # Word boundaries, so `updated_at` and `deleted` are not writes, and
-          # the fixtures are excluded -- they BUILD the six databases, which is
-          # the one place an INSERT belongs.
-          writes='\b(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|TRUNCATE)\b'
-          found=$(grep -rElP "$writes" src/ --include='*.js' | grep -v 'src/fixtures/' || true)
+          # A STATEMENT, not a word.
+          #
+          # The first version looked for INSERT, UPDATE and DELETE on their
+          # own, and the only thing it found was the sentence in the service
+          # saying there are none of them. A check that fires on its own
+          # documentation is a check somebody deletes.
+          #
+          # src/fixtures/ is excluded because it BUILDS the six databases,
+          # which is the one place a CREATE and an INSERT belong.
+          writes='INSERT\s+INTO|UPDATE\s+\w+\s+SET|DELETE\s+FROM|DROP\s+(TABLE|INDEX)|ALTER\s+TABLE|CREATE\s+(TABLE|INDEX)|TRUNCATE'
+
+          found=$(grep -rlP "$writes" src/ --include='*.js' | grep -v 'src/fixtures/' || true)
 
           if [ -n "$found" ]; then
-            echo "these look like they write, and only src/fixtures/ may:"
+            echo "these write, and only src/fixtures/ may:"
             grep -rnP "$writes" $found || true
             exit 1
           fi
 
-          echo "nothing outside src/fixtures/ writes anything"
+          # And it must be able to find one, or it is a check that passes by
+          # matching nothing (which is how they usually stop working).
+          if ! grep -rqP "$writes" src/fixtures/; then
+            echo "the pattern found no writes even in src/fixtures/, which builds the databases"
+            echo "this check has stopped being able to see one"
+            exit 1
+          fi
 
+          echo "nothing outside src/fixtures/ writes anything, and the pattern can still see one"
       - name: and no runtime dependency crept in
         run: |
           node -e '
