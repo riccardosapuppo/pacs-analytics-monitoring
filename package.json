@@ -9,7 +9,7 @@
   },
   "scripts": {
     "start": "node src/index.js",
-    "test": "node --test test/",
+    "test": "node --test test/*.test.js",
     "measure": "node tools/measure.mjs",
     "check:dialects": "node tools/check-dialects.mjs",
     "check:screen": "node tools/through-the-screen.mjs",

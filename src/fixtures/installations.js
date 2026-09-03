@@ -177,7 +177,7 @@ export const INSTALLATIONS = [
 
   {
     name: 'older-column-names',
-    differs: 'four columns kept the names they had two major versions ago',
+    differs: 'six columns kept the names they had two major versions ago',
     why:
       'Nobody ran the rename script here, and nobody was going to: the archive holds eleven years of ' +
       'studies and the maintenance window to rewrite it does not exist.',

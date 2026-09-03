@@ -63,18 +63,36 @@ export function studies(run, d, schema, filters = {}) {
 }
 
 /**
+ * The wildcards in a `LIKE`, made literal.
+ *
+ * `%` and `_` are wildcards in a pattern, and a caller typing one means the
+ * character. The first version replaced them with a space, which is worse than
+ * doing nothing: `LIKE '% %'` matches every description containing a space,
+ * which is all of them, so a search for a per cent sign returned the whole
+ * archive and looked like it had simply not filtered.
+ *
+ * So they are escaped, and the escape character is declared. `ESCAPE` is in the
+ * standard and all three dialects have it; leaving it out means each of them
+ * picks its own default, and they do not agree.
+ */
+const ESCAPE = String.fromCharCode(92);
+
+export function literally(value) {
+  return String(value).replace(new RegExp(`[${ESCAPE}%_]`, 'g'), (one) => ESCAPE + one);
+}
+
+/**
  * The filters, all of them parameterised.
  *
- * `LIKE` needs its own care: the pattern is built here and bound as a value, so
- * a `%` a caller types is a literal per cent in their search rather than a
- * wildcard they did not know they had asked for.
+ * The pattern is built here and bound as a value, so nothing a caller types
+ * reaches the SQL text — only the `%` at each end, which this file put there.
  */
 function whereFor(schema, d, bind, filters) {
   const clauses = [within(schema, d, bind, filters, 's')];
 
   const like = (column, value) => {
     if (!value || !column) return;
-    clauses.push(`${d.quote(column)} LIKE ${bind.add(`%${String(value).replace(/[%_]/g, ' ')}%`)}`);
+    clauses.push(`${d.quote(column)} LIKE ${bind.add(`%${literally(value)}%`)} ESCAPE '${ESCAPE}'`);
   };
 
   like(schema.accession, filters.accession);
@@ -90,9 +108,9 @@ function whereFor(schema, d, bind, filters) {
 
     if (expression) {
       // `LIKE` rather than `=`, because ModalitiesInStudy may hold more than
-      // one: a study that is `CT\MR` is a CT study, and an equality test says
-      // it is not.
-      clauses.push(`${expression} LIKE ${bind.add(`%${String(filters.modality).replace(/[%_]/g, ' ')}%`)}`);
+      // one: a study whose field is `CT\MR` is a CT study, and an equality test
+      // says it is not.
+      clauses.push(`${expression} LIKE ${bind.add(`%${literally(filters.modality)}%`)} ESCAPE '${ESCAPE}'`);
     }
   }
 
