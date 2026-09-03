@@ -1,0 +1,112 @@
+name: checks
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  # Every job here has a timeout. One that hangs is worse than one that fails:
+  # it stays amber for six hours and nobody looks at it, while a red one sends
+  # an email.
+  the-claim:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # The version this is known to run on, and the one `engines` declares.
+          # node:sqlite is unflagged from 24; on 22 it is behind a flag, which
+          # is the sort of thing that only shows up here.
+          node-version: '24'
+
+      - run: npm ci
+
+      - name: the parts
+        run: npm test
+
+      - name: the claim
+        # Fails the run if the side that reads the schema is not right
+        # everywhere. Not a threshold: the six installations hold the same
+        # studies, so anything other than the same answers is a defect.
+        run: npm run measure
+
+      - name: what the two unexecuted dialects emit
+        run: npm run check:dialects
+
+      - name: the mark in the header and the mark in the tab
+        run: npm run check:mark
+
+      - name: nobody can be handed yesterday's page
+        run: npm run check:serving
+
+      - name: it answers, over HTTP, from a standing start
+        # The README opens with `npm start`. This is that command, and requests
+        # to the thing it starts -- the check that catches a project which
+        # builds and tests and does not run.
+        run: |
+          PORT=3899 node src/index.js --no-open &
+          service=$!
+          trap 'kill $service 2>/dev/null || true' EXIT
+
+          for try in $(seq 1 100); do
+            if curl -sf "http://127.0.0.1:3899/api/health" > /dev/null; then break; fi
+            sleep 0.2
+          done
+
+          curl -sf "http://127.0.0.1:3899/api/health" | grep -q '"ok":true' \
+            || { echo "it did not answer about itself"; exit 1; }
+
+          # The invariant, over HTTP: two installations that disagree about
+          # every column name give the same count.
+          one=$(curl -sf "http://127.0.0.1:3899/api/dashboard?installation=as-documented" \
+                 | node -pe 'JSON.parse(require("fs").readFileSync(0)).summary.studies')
+          two=$(curl -sf "http://127.0.0.1:3899/api/dashboard?installation=older-column-names" \
+                 | node -pe 'JSON.parse(require("fs").readFileSync(0)).summary.studies')
+
+          echo "as-documented: $one   older-column-names: $two"
+          [ "$one" = "$two" ] || { echo "the same studies gave different answers"; exit 1; }
+
+      - name: nothing here writes to the archive
+        # The claim the whole project rests on. Read-only is easy to be and
+        # easy to stop being, and the day somebody adds a write is the day this
+        # goes red rather than the day somebody notices in review.
+        run: |
+          # Word boundaries, so `updated_at` and `deleted` are not writes, and
+          # the fixtures are excluded -- they BUILD the six databases, which is
+          # the one place an INSERT belongs.
+          writes='\b(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|TRUNCATE)\b'
+          found=$(grep -rElP "$writes" src/ --include='*.js' | grep -v 'src/fixtures/' || true)
+
+          if [ -n "$found" ]; then
+            echo "these look like they write, and only src/fixtures/ may:"
+            grep -rnP "$writes" $found || true
+            exit 1
+          fi
+
+          echo "nothing outside src/fixtures/ writes anything"
+
+      - name: and no runtime dependency crept in
+        run: |
+          node -e '
+            const held = Object.keys(require("./package.json").dependencies ?? {});
+            console.log("runtime dependencies:", held.length ? held.join(", ") : "none");
+            if (held.length) {
+              console.error("The README says there are none. If that changed, say so there and change this.");
+              process.exit(1);
+            }
+          '
+
+# `npm run check:screen` and `npm run screenshots` are not here, and that is
+# deliberate. Both drive the browser already installed on the machine
+# (`channel: msedge`) rather than downloading one, which is the right trade on a
+# workstation and impossible on a runner that has no browser. Making them pass
+# in CI would mean pulling several hundred megabytes of Chromium on every push.
+# They run before every commit instead, and they say plainly when they cannot.
