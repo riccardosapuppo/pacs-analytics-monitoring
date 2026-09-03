@@ -143,9 +143,28 @@ function weighted(roll, weights) {
   return weights.length - 1;
 }
 
-const FIRST_DAY = Date.UTC(2024, 0, 1);
-const DAYS = 640; // 1 January 2024 to about the end of September 2025.
-const HOW_MANY = 900;
+/**
+ * Five years, and growing.
+ *
+ * Not because more data is better, but because an archive that has existed
+ * for two years cannot be forecast from and a storage chart that never once
+ * draws a line is a feature nobody can look at. A real archive has years
+ * behind it and takes more room every one of them -- which is the thing the
+ * forecast is for, and the reason anybody asks.
+ */
+const FIRST_DAY = Date.UTC(2021, 0, 1);
+const DAYS = 1826; // 1 January 2021 to 31 December 2025: five whole years.
+const HOW_MANY = 2200;
+
+/**
+ * How much busier the archive gets.
+ *
+ * A day is chosen as u^(1/GROWTH) rather than u, which bends a flat
+ * distribution towards the recent end. At 1.6 the last full year receives
+ * roughly twice what the first did -- steep enough for the line to be worth
+ * fitting and gentle enough not to look invented.
+ */
+const GROWTH = 1.6;
 
 function build() {
   const roll = rolls(20260903);
@@ -158,7 +177,7 @@ function build() {
     const room = pick(roll, rooms);
 
     // A day, then a weekday-weighted nudge onto a plausible one.
-    let day = Math.floor(roll() * DAYS);
+    let day = Math.floor(DAYS * roll() ** (1 / GROWTH));
     const when = new Date(FIRST_DAY + day * 86400000);
     const weekday = (when.getUTCDay() + 6) % 7; // Monday = 0
 
