@@ -20,5 +20,6 @@
   "devDependencies": {
     "playwright-core": "^1.48.0"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "author": "Riccardo Sapuppo"
 }
