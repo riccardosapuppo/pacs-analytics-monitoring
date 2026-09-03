@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Archive analytics</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" type="image/svg+xml" href="./mark.svg" />
+    <meta name="theme-color" content="#12213a" />
+    <link rel="stylesheet" href="./console.css" />
+  </head>
+
+  <body>
+    <!--
+      One control matters on this page, and it is at the top.
+      ────────────────────────────────────────────────────────
+
+      Changing the installation swaps the database under the dashboard. The six
+      hold **the same studies** and disagree only about how to write them down —
+      so the numbers on the left, which read the schema before querying it, do
+      not move. The numbers on the right, which write the SQL out, do.
+
+      That is the argument of this project, made something you can operate
+      rather than something you have to be told.
+    -->
+
+    <header class="top">
+      <div class="who">
+        <svg data-mark width="34" height="34" viewBox="0 0 32 32" role="img" aria-label="Archive analytics" fill="none">
+          <rect width="32" height="32" rx="8" fill="var(--mark-ground)" />
+          <rect x="7" y="19" width="4" height="7" rx="1.4" fill="var(--mark-ink)" opacity="0.55" />
+          <rect x="14" y="13" width="4" height="13" rx="1.4" fill="var(--mark-ink)" opacity="0.75" />
+          <rect x="21" y="7" width="4" height="19" rx="1.4" fill="var(--mark-ink)" />
+        </svg>
+
+        <div>
+          <h1>Archive analytics</h1>
+          <p>Six installations. The same studies. Six ways of writing them down.</p>
+        </div>
+      </div>
+
+      <label class="pick">
+        <span>reading</span>
+        <select id="installation"></select>
+      </label>
+    </header>
+
+    <!-- What is different about this one, in its own words. -->
+    <p class="mode" id="differs">
+      <span class="dot" aria-hidden="true"></span>
+      <span id="differs-says">reading the archive…</span>
+    </p>
+
+    <main>
+      <!-- ───────────────────────────────────── what the schema turned out to be -->
+      <details class="panel found" id="found">
+        <summary>
+          <h2>What this installation calls things</h2>
+          <span class="summary-say" id="found-say">—</span>
+        </summary>
+
+        <ul class="notes" id="notes"></ul>
+
+        <table class="resolved">
+          <thead>
+            <tr><th>what is needed</th><th>what it is called here</th><th>looked for, in order</th></tr>
+          </thead>
+          <tbody id="resolved"></tbody>
+        </table>
+
+        <p class="hint">
+          Read from the catalogue at startup, never assumed. The order of the
+          candidates is the argument: an upgrade adds a column beside the one it
+          replaces and stops writing to the old one, so preferring the newer name
+          is the difference between a storage chart that is current and one that
+          stopped growing in 2021.
+        </p>
+      </details>
+
+      <!-- ──────────────────────────────────────────────── the headline numbers -->
+      <section class="panel numbers">
+        <h2>The archive</h2>
+
+        <dl class="kpis" id="kpis"></dl>
+
+        <p class="undatable" id="undatable" hidden></p>
+
+        <!--
+          The same questions, with the SQL written out. Beside the answers
+          rather than on another page: two numbers in two places is two numbers
+          somebody has to remember, and nobody does.
+        -->
+        <div class="straight" id="straight">
+          <h3>The same questions, with the SQL written straight</h3>
+          <ul id="straight-list"></ul>
+        </div>
+      </section>
+
+      <div class="two">
+        <!-- ─────────────────────────────────────────────────────── modalities -->
+        <section class="panel chart">
+          <h2>By modality</h2>
+          <div id="modalities"></div>
+        </section>
+
+        <!-- ────────────────────────────────────────────────────────── devices -->
+        <section class="panel chart">
+          <h2>By device</h2>
+          <div id="devices"></div>
+        </section>
+      </div>
+
+      <!-- ────────────────────────────────────────────────────── over the years -->
+      <section class="panel chart">
+        <h2>Storage, and where the line goes</h2>
+        <div id="storage"></div>
+      </section>
+
+      <!-- ────────────────────────────────────────────────────────── the months -->
+      <section class="panel chart">
+        <h2>Studies per month</h2>
+        <div id="trend"></div>
+      </section>
+
+      <!-- ───────────────────────────────────────────────────────── the heatmap -->
+      <section class="panel chart">
+        <h2>When the archive is busy</h2>
+        <div id="heatmap"></div>
+      </section>
+
+      <!-- ────────────────────────────────────────────────────────── the studies -->
+      <section class="panel">
+        <h2>The studies underneath</h2>
+
+        <p class="hint">
+          Every number above can be opened. A dashboard whose figures cannot be
+          looked into is a dashboard nobody can argue with, which sounds like a
+          strength until the first time one of them is wrong.
+        </p>
+
+        <form id="find">
+          <label>
+            <span>modality</span>
+            <input type="text" id="f-modality" placeholder="CT" autocomplete="off" />
+          </label>
+          <label>
+            <span>description</span>
+            <input type="text" id="f-description" placeholder="chest" autocomplete="off" />
+          </label>
+          <button type="submit">Find</button>
+          <a class="csv" id="csv" download>Download as CSV</a>
+        </form>
+
+        <p class="hint small" id="found-count">—</p>
+
+        <div class="rows">
+          <table class="studies">
+            <thead>
+              <tr>
+                <th>date</th><th>modality</th><th>description</th><th>device</th>
+                <th class="right">series</th><th class="right">images</th><th class="right">size</th>
+              </tr>
+            </thead>
+            <tbody id="studies"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>
+        Every study, device, site and serial here is invented. Nothing is written
+        anywhere: there is no <code>INSERT</code>, <code>UPDATE</code> or
+        <code>DELETE</code> in <code>src/</code>, and the six databases are built
+        in memory from <code>src/fixtures/facts.js</code> when the service starts.
+      </p>
+      <p class="by">Developed by <strong>Riccardo Sapuppo</strong></p>
+    </footer>
+
+    <script src="./console.js" type="module"></script>
+  </body>
+</html>

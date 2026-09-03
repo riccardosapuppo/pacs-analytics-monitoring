@@ -1,0 +1,404 @@
+/*
+ * A dashboard about a database somebody else owns.
+ *
+ * The palette is a cool ink blue — this is a page about counting, in a
+ * hospital's back office, and nothing on it wants to be urgent. One accent,
+ * used for one thing: a value that was read from the schema rather than
+ * assumed. Amber means "this installation cannot answer that", which is a fact
+ * rather than an error and is never drawn as one.
+ *
+ * The one piece of deliberate emphasis is the panel under the headline
+ * numbers — the same questions with the SQL written straight. It is the
+ * argument, so it is the only place on the page where a number is allowed to
+ * be red.
+ */
+
+:root {
+  --ink: #161d28;
+  --ink-soft: #4a5665;
+  --ink-faint: #808c9a;
+
+  --paper: #f2f4f7;
+  --card: #ffffff;
+  --raised: #f7f9fb;
+  --line: #dde3ea;
+
+  --accent: #2c5c96;
+  --accent-ink: #1d4373;
+  --accent-soft: #e6eef8;
+  --accent-line: #b9d0e8;
+
+  --warn: #8a5a00;
+  --warn-soft: #fdf3e0;
+  --warn-line: #f0d9a8;
+
+  --wrong: #a33028;
+  --wrong-soft: #fbeceb;
+  --wrong-line: #f0c4c0;
+
+  --mark-ground: #12213a;
+  --mark-ink: #8fb6e8;
+
+  --ui: system-ui, 'Segoe UI', -apple-system, Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --mono: ui-monospace, 'Cascadia Mono', 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #e7ecf2;
+    --ink-soft: #aeb9c6;
+    --ink-faint: #7d8996;
+
+    --paper: #0f141b;
+    --card: #161d26;
+    --raised: #1b232e;
+    --line: #2a3440;
+
+    --accent: #6da3dd;
+    --accent-ink: #a8ccf0;
+    --accent-soft: #16283e;
+    --accent-line: #24405e;
+
+    --warn: #e8b665;
+    --warn-soft: #2c2415;
+    --warn-line: #4a3a1c;
+
+    --wrong: #e88b82;
+    --wrong-soft: #2e1a19;
+    --wrong-line: #4d2926;
+  }
+}
+
+* { box-sizing: border-box; }
+
+/* `hidden` means hidden, whatever else an element is told to be: the attribute
+ * is a `display: none` in the browser's own stylesheet, and any author rule
+ * that sets `display` beats it. */
+[hidden] { display: none !important; }
+
+body {
+  margin: 0;
+  padding: 0 0 2rem;
+  background: var(--paper);
+  color: var(--ink);
+  font: 15px/1.55 var(--ui);
+}
+
+.mono { font-family: var(--mono); font-size: 0.86em; }
+.faint { color: var(--ink-faint); }
+.right { text-align: right; }
+.small { font-size: 0.82rem; }
+.nothing { color: var(--ink-faint); font-style: italic; padding: 0.8rem 0; }
+
+/* ------------------------------------------------------------------- top */
+
+.top {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 2rem;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 1.3rem clamp(1rem, 3vw, 2.4rem) 1.1rem;
+  border-bottom: 1px solid var(--line);
+  background: var(--card);
+}
+
+.who { display: flex; gap: 0.9rem; align-items: flex-start; }
+.who h1 { margin: 0; font-size: 1.3rem; letter-spacing: -0.01em; }
+.who p { margin: 0.15rem 0 0; color: var(--ink-soft); font-size: 0.87rem; }
+
+/* The one control that matters, and it looks like it. */
+.pick { display: flex; gap: 0.5rem; align-items: center; font-size: 0.85rem; color: var(--ink-faint); }
+.pick select {
+  font: 600 0.92rem/1 var(--mono);
+  padding: 0.55rem 0.7rem;
+  border: 2px solid var(--accent);
+  border-radius: 5px;
+  background: var(--card);
+  color: var(--accent-ink);
+  cursor: pointer;
+}
+.pick select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* ------------------------------------------------------- what differs here */
+
+.mode {
+  display: flex;
+  gap: 0.7rem;
+  align-items: baseline;
+  margin: 0;
+  padding: 0.8rem clamp(1rem, 3vw, 2.4rem);
+  border-bottom: 1px solid var(--line);
+  background: var(--raised);
+  font-size: 0.88rem;
+  color: var(--ink-soft);
+}
+.mode .dot {
+  flex: none;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: var(--warn);
+  transform: translateY(-0.1em);
+}
+.mode[data-plain='yes'] .dot { background: var(--accent); }
+.mode strong { color: var(--ink); }
+
+/* ---------------------------------------------------------------- layout */
+
+main { padding: 1.2rem clamp(1rem, 3vw, 2.4rem) 0; display: flex; flex-direction: column; gap: 1.1rem; }
+
+.two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.1rem; align-items: start; }
+
+.panel {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 1.1rem 1.2rem 1.2rem;
+}
+
+.panel h2 { margin: 0 0 0.2rem; font-size: 1.02rem; }
+.panel h3 { margin: 0 0 0.5rem; font-size: 0.88rem; color: var(--ink-soft); }
+
+.hint { margin: 0.7rem 0 0; color: var(--ink-faint); font-size: 0.84rem; max-width: 78ch; }
+.hint code, .notes code { font-family: var(--mono); font-size: 0.86em; }
+.hint strong { color: var(--ink-soft); }
+
+/* ---------------------------------------------------- what the schema said */
+
+details.found { padding: 0; }
+details.found > summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.9rem;
+  align-items: baseline;
+  padding: 1rem 1.2rem;
+  cursor: pointer;
+  list-style: none;
+}
+details.found > summary::-webkit-details-marker { display: none; }
+details.found > summary::before {
+  content: '';
+  flex: none;
+  width: 0;
+  height: 0;
+  border: 5px solid transparent;
+  border-left-color: var(--ink-faint);
+  transform: translateY(-0.05em);
+  transition: transform 0.12s;
+}
+details.found[open] > summary::before { transform: rotate(90deg) translateX(-0.05em); }
+details.found > summary h2 { margin: 0; }
+details.found > summary:hover h2 { color: var(--accent-ink); }
+details.found > *:not(summary) { margin-left: 1.2rem; margin-right: 1.2rem; }
+details.found > *:last-child { margin-bottom: 1.2rem; }
+
+.summary-say { margin-left: auto; font-size: 0.8rem; color: var(--ink-faint); font-family: var(--mono); }
+
+.notes { margin: 0 0 0.9rem; padding-left: 1.1rem; color: var(--ink-soft); font-size: 0.86rem; }
+.notes li { margin-bottom: 0.25rem; }
+
+table.resolved { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+table.resolved th {
+  text-align: left;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-faint);
+  padding: 0.3rem 0.5rem;
+  border-bottom: 1px solid var(--line);
+}
+table.resolved td { padding: 0.32rem 0.5rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.resolved .field { color: var(--ink-soft); }
+table.resolved code { font-family: var(--mono); font-size: 0.94em; color: var(--ink-faint); }
+table.resolved .is code { color: var(--accent-ink); font-weight: 600; }
+table.resolved code.won { color: var(--accent-ink); font-weight: 600; }
+table.resolved tr[data-state='later'] { background: var(--accent-soft); }
+table.resolved tr[data-state='missing'] { background: var(--warn-soft); }
+.absent { color: var(--warn); font-style: italic; }
+
+/* ------------------------------------------------------------- the numbers */
+
+.kpis { display: flex; flex-wrap: wrap; gap: 1.8rem; margin: 0.9rem 0 0; }
+.kpis dt {
+  margin: 0;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--ink-faint);
+}
+.kpis dd { margin: 0.1rem 0 0; font-size: 1.7rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.undatable {
+  margin: 1rem 0 0;
+  padding: 0.7rem 0.85rem;
+  border-radius: 5px;
+  border-left: 3px solid var(--warn);
+  background: var(--warn-soft);
+  color: var(--warn);
+  font-size: 0.85rem;
+}
+.undatable strong { color: var(--warn); }
+.undatable code { font-family: var(--mono); font-size: 0.9em; }
+
+/* The argument. The only place a number may be red. */
+.straight { margin-top: 1.2rem; padding-top: 1rem; border-top: 1px solid var(--line); }
+.straight ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.3rem; }
+
+.straight li {
+  display: flex;
+  gap: 0.8rem;
+  align-items: baseline;
+  flex-wrap: wrap;
+  padding: 0.45rem 0.7rem;
+  border-radius: 4px;
+  border-left: 3px solid var(--line);
+  background: var(--raised);
+  font-size: 0.85rem;
+}
+
+.straight .q { min-width: 14rem; color: var(--ink-soft); }
+.straight .a { font-family: var(--mono); font-weight: 600; min-width: 7rem; }
+.straight .note { color: var(--ink-faint); font-size: 0.8rem; }
+
+.straight li[data-how='wrong'] { border-left-color: var(--wrong); background: var(--wrong-soft); }
+.straight li[data-how='wrong'] .a,
+.straight li[data-how='wrong'] .note { color: var(--wrong); }
+.straight li[data-how='patched'] { border-left-color: var(--warn-line); }
+.straight li[data-how='patched'] .note { color: var(--warn); }
+.straight li[data-how='unanswerable'] { border-left-color: var(--warn-line); }
+.straight li[data-how='unanswerable'] .note { color: var(--warn); }
+
+/* ------------------------------------------------------------- the charts */
+
+.donut-row { display: flex; gap: 1.4rem; align-items: center; flex-wrap: wrap; margin-top: 0.8rem; }
+.donut { width: 190px; height: 190px; flex: none; }
+.donut-total { text-anchor: middle; font: 700 1.35rem var(--ui); fill: var(--ink); }
+.donut-label { text-anchor: middle; font: 0.62rem var(--ui); fill: var(--ink-faint); letter-spacing: 0.08em; text-transform: uppercase; }
+
+.key { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.83rem; flex: 1; min-width: 12rem; }
+.key li { display: flex; gap: 0.6rem; align-items: baseline; }
+.swatch { width: 0.7rem; height: 0.7rem; border-radius: 2px; flex: none; }
+.key .name { font-family: var(--mono); font-size: 0.82rem; min-width: 3rem; }
+.key .value { font-variant-numeric: tabular-nums; margin-left: auto; }
+.key .share { color: var(--ink-faint); min-width: 3.2rem; text-align: right; font-variant-numeric: tabular-nums; }
+
+.bars { list-style: none; margin: 0.8rem 0 0; padding: 0; display: flex; flex-direction: column; gap: 0.3rem; }
+.bars li { display: flex; gap: 0.7rem; align-items: center; font-size: 0.83rem; }
+.bar-name { font-family: var(--mono); font-size: 0.8rem; min-width: 8rem; color: var(--ink-soft); }
+.bar-track { flex: 1; height: 0.85rem; background: var(--raised); border-radius: 3px; overflow: hidden; min-width: 4rem; }
+.bar-fill { display: block; height: 100%; border-radius: 3px; }
+.bar-value { font-variant-numeric: tabular-nums; min-width: 3.5rem; text-align: right; }
+
+.columns { width: 100%; height: auto; margin-top: 0.8rem; display: block; overflow: visible; }
+.column { fill: var(--accent); }
+.column.ahead { fill: none; stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 4 3; }
+.column-label { text-anchor: middle; font: 0.62rem var(--mono); fill: var(--ink-faint); }
+.column-value { text-anchor: middle; font: 0.6rem var(--mono); fill: var(--ink-soft); }
+
+/* The heatmap: a grid, always complete. A hole and a zero must not look alike. */
+.heat { margin-top: 0.8rem; display: flex; flex-direction: column; gap: 2px; overflow-x: auto; }
+.heat-hours { display: flex; gap: 2px; padding-left: 2.6rem; }
+.heat-hours span { flex: 1; min-width: 12px; font: 0.6rem var(--mono); color: var(--ink-faint); text-align: center; }
+.heat-row { display: flex; gap: 2px; align-items: center; }
+.heat-day { flex: none; width: 2.6rem; font: 0.68rem var(--mono); color: var(--ink-faint); }
+.heat-cell {
+  flex: 1;
+  min-width: 12px;
+  height: 15px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--accent) calc(var(--weight) * 100%), var(--raised));
+}
+
+.unavailable {
+  margin: 0.9rem 0 0;
+  padding: 0.8rem 0.9rem;
+  border-radius: 5px;
+  border-left: 3px solid var(--warn);
+  background: var(--warn-soft);
+  color: var(--warn);
+  font-size: 0.86rem;
+}
+.unavailable strong { color: var(--warn); }
+.unavailable code { font-family: var(--mono); font-size: 0.9em; }
+
+/* ------------------------------------------------------------ the studies */
+
+#find { display: flex; flex-wrap: wrap; gap: 0.7rem; align-items: flex-end; margin-top: 0.9rem; }
+#find label { display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.75rem; color: var(--ink-faint); }
+#find input {
+  font: inherit;
+  font-size: 0.88rem;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--card);
+  color: var(--ink);
+}
+#find input:focus-visible { outline: 3px solid var(--accent); outline-offset: 1px; }
+
+button {
+  font: 600 0.86rem/1 var(--ui);
+  padding: 0.55rem 0.9rem;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+}
+button:hover { background: var(--accent-ink); border-color: var(--accent-ink); }
+button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+.csv { font-size: 0.82rem; color: var(--accent-ink); align-self: center; }
+
+.rows { margin-top: 0.8rem; max-height: 26rem; overflow: auto; border: 1px solid var(--line); border-radius: 5px; }
+
+table.studies { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
+table.studies th {
+  position: sticky;
+  top: 0;
+  text-align: left;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-faint);
+  background: var(--raised);
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid var(--line);
+}
+table.studies td { padding: 0.35rem 0.6rem; border-bottom: 1px solid var(--line); }
+table.studies tr:last-child td { border-bottom: none; }
+table.studies .right { text-align: right; font-variant-numeric: tabular-nums; }
+
+.chip {
+  display: inline-block;
+  padding: 0.05rem 0.4rem;
+  border-radius: 3px;
+  font: 600 0.72rem var(--mono);
+  color: #fff;
+  background: var(--chip, var(--ink-faint));
+}
+
+/* ------------------------------------------------------------------ foot */
+
+footer { padding: 1.4rem clamp(1rem, 3vw, 2.4rem) 0; }
+footer p { margin: 0; color: var(--ink-faint); font-size: 0.82rem; max-width: 82ch; }
+footer code { font-family: var(--mono); font-size: 0.86em; }
+footer .by { margin-top: 0.5rem; }
+
+@media (max-width: 68rem) {
+  .two { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 46rem) {
+  .straight li { flex-direction: column; gap: 0.15rem; }
+  .straight .q, .straight .a { min-width: 0; }
+  .summary-say { margin-left: 0; width: 100%; }
+  .kpis { gap: 1.2rem; }
+}
+
+/* A chart is a picture, not a wall. Columns keep a fixed height and scroll
+ * sideways when there are more of them than fit — a chart squeezed to fit
+ * becomes sixty two-pixel slivers, which is a texture rather than a reading. */
+.chart > div { overflow-x: auto; }
+.columns { height: 215px; width: auto; max-width: 100%; }

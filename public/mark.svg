@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <!--
+    The same mark as the one inlined in index.html: three columns, growing.
+    Two files because a favicon is loaded outside the page and inherits none of
+    its colours, so its own are literal. A test compares the geometry.
+  -->
+  <rect width="32" height="32" rx="8" fill="#12213a"/>
+  <rect x="7" y="19" width="4" height="7" rx="1.4" fill="#8fb6e8" opacity="0.55"/>
+  <rect x="14" y="13" width="4" height="13" rx="1.4" fill="#8fb6e8" opacity="0.75"/>
+  <rect x="21" y="7" width="4" height="19" rx="1.4" fill="#8fb6e8"/>
+</svg>
