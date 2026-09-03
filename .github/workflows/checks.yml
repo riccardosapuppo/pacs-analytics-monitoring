@@ -61,8 +61,14 @@ jobs:
             sleep 0.2
           done
 
-          curl -sf "http://127.0.0.1:3899/api/health" | grep -q '"ok":true' \
-            || { echo "it did not answer about itself"; exit 1; }
+          # Parsed, not grepped.
+          #
+          # The first version looked for the text '"ok":true' and the service
+          # answers in indented JSON, so what it actually sends is
+          # '"ok": true' with a space. The check failed while the service was
+          # answering perfectly, which is the most expensive kind of red.
+          curl -sf "http://127.0.0.1:3899/api/health" \
+            | node -e 'const said = JSON.parse(require("fs").readFileSync(0)); if (said.ok !== true) { console.error("it did not answer about itself:", said); process.exit(1); }'
 
           # The invariant, over HTTP: two installations that disagree about
           # every column name give the same count.
