@@ -6,8 +6,8 @@ machine, which month. The kind of dashboard every product of this sort has.
 The argument is not the dashboard. It is this:
 
 > **You are reporting on a database you do not own, cannot change, and that is
-> different at every installation — and the way that goes wrong is usually not
-> an error.**
+> different at every installation: the way that goes wrong is usually not an
+> error.**
 
 ![The console: the same questions answered by reading the schema first and by writing the SQL out, with the archive drawn underneath](docs/console.png)
 
@@ -20,14 +20,14 @@ what those thousands of lines had learnt about the databases they were pointed
 at, one incident at a time:
 
 - **the same quantity is called three different things.** `StudySizeInKB`,
-  `StudySizeKB`, `StudySize` — depending which version somebody upgraded from,
+  `StudySizeKB` or `StudySize`, depending which version somebody upgraded from,
   and whether they ran the rename step;
 - **the modality is not on the table the documentation puts it on.** It lives on
   `Series`, one row per series, reached through a foreign key;
 - **a column can simply not be there.** The source device is optional and
   arrived in a later schema version;
-- **the dates are `VARCHAR(8)`**, holding a DICOM `YYYYMMDD` — which is to say
-  holding whatever the sending modality put in them;
+- **the dates are `VARCHAR(8)`**, holding a DICOM `YYYYMMDD`, which is to say
+  whatever the sending modality put in them;
 - and the whole thing might be **SQL Server or PostgreSQL**, decided by probing,
   because the configuration says a connection string exists and not that
   anything is listening on it.
@@ -38,7 +38,7 @@ run `SELECT`.
 
 **What is not reproduced**, and why: the original also read the connection
 string out of the archive product's own configuration file, and had one write
-path — queueing a study to be burnt to disc — which was disabled by default,
+path for queueing a study to be burnt to disc, which was disabled by default,
 refused itself, and needed the vendor's services running to do anything. Neither
 belongs in a public repository: the first is a path on somebody's server and the
 second is a write into somebody's queue. What is here is the half that
@@ -53,7 +53,7 @@ npm run measure
 Eight questions. Six installations **holding the same studies** and disagreeing
 only about how to write them down. Two ways of answering each. So every question
 has one right answer, worked out from the facts in plain JavaScript by
-[`src/measure/truth.ts`](src/measure/truth.ts) — never by running a query,
+[`src/measure/truth.ts`](src/measure/truth.ts), never by running a query,
 because an expectation computed the way the answer is computed agrees with a
 bug.
 
@@ -79,7 +79,7 @@ combined-modalities   7 right   1 SILENT                8 right
 The first three share the only property that matters: **somebody knows.** A
 query that cannot find a column stops the page and gets fixed on Monday. A query
 that joins a one-to-many table returns numbers nine times too large, keeps the
-shape of the chart, and is believed — because a number on a dashboard is
+shape of the chart, and is believed, because a number on a dashboard is
 believed.
 
 > **Seven of forty-eight answers were wrong with nothing to show for it.**
@@ -108,7 +108,7 @@ repair joins `Series`. The join is written correctly. `Series` is also
 storage goes along with it.
 
 Nothing errors. The chart keeps its shape. The proportions change too, because
-CT and MR have the most series — so the picture is not even uniformly wrong.
+CT and MR have the most series, so the picture is not even uniformly wrong.
 
 The fix is not "avoid the join". It is that **the right query depends on what is
 being counted**: counting studies per modality, a join is right as long as it
@@ -123,24 +123,24 @@ chosen by what is being asked.
 
 ![The archive panel on the installation with undatable rows: 2,196 studies, a note saying four rows cannot be dated, and four separate disagreements with the straight version](docs/undatable.png)
 
-`StudyDate` is a `VARCHAR(8)` with no constraint on it and never had one — the
-archive's job is to accept the study, not to argue with the scanner about
-formatting. Over a few years it collects `NULL`, `''`, a human-readable date,
-and the occasional word.
+`StudyDate` is a `VARCHAR(8)` with no constraint on it and never had one,
+because the archive's job is to accept the study, not to argue with the scanner
+about formatting. Over a few years it collects `NULL`, `''`, a human-readable
+date, and the occasional word.
 
 Four of them here are enough to make **five answers wrong at once**, by ones and
 twos, and to grow buckets called `2024-0` and `UNKNOW` on the monthly chart.
 
-Every dated query carries the same guard — eight characters, all of them digits
-— and **every answer says how many rows the guard removed**. A headline count
+Every dated query carries the same guard (eight characters, all of them digits)
+and **every answer says how many rows the guard removed**. A headline count
 that includes them beside a chart that excludes them is a page that contradicts
 itself by four, which nobody can see in a bar chart and everybody eventually
 asks about.
 
 ### A field that holds two modalities
 
-`ModalitiesInStudy` is multi-valued in the standard — value multiplicity 1-n,
-backslash delimited — so `CT\MR` is a correct value for a study containing both.
+`ModalitiesInStudy` is multi-valued in the standard (value multiplicity 1-n,
+backslash delimited), so `CT\MR` is a correct value for a study containing both.
 It is also a value a `GROUP BY` turns into a category that is neither, while
 taking the count away from both: CT drops from 512 to 459 and a slice appears
 that no radiologist has ever ordered.
@@ -172,7 +172,7 @@ without the schema step does not have it.
 
 **"This cannot be answered here, and here is why" is a correct answer.** The
 alternatives are worse in both directions: crashing the page because one panel
-of six is unavailable, or drawing an empty chart — which a reader reasonably
+of six is unavailable, or drawing an empty chart, which a reader reasonably
 takes to mean "no studies" rather than "no column".
 
 ## Before you start
@@ -185,8 +185,8 @@ takes to mean "no studies" rather than "no column".
   annotations at load, so `node src/index.ts` is the whole story: no transpiler,
   no build step, no output directory holding a stale copy of the source.
   `erasableSyntaxOnly` in `tsconfig.json` makes `tsc` reject anything Node
-  cannot strip, so `npm run typecheck` is not only a check on the types — it is
-  the check that this still runs without a build.
+  cannot strip, so `npm run typecheck` is not only a check on the types but the
+  check that this still runs without a build.
 - **No runtime dependencies.** `npm install` fetches `playwright-core`, which is
   a devDependency for the two browser-driven checks and drives the **Microsoft
   Edge** already on this machine rather than downloading a browser.
@@ -202,7 +202,7 @@ npm start
 ```
 
 The console opens by itself on <http://127.0.0.1:3800>. Not in CI, not without a
-terminal, and not with `--no-open` or `NO_OPEN=1` — and it says which of those
+terminal, not with `--no-open` or `NO_OPEN=1`, and it says which of those
 happened.
 
 **One control matters**, and it is the select at the top. Changing the
@@ -231,8 +231,8 @@ and this is the only honest way to put it:
 > it proves the builder produces the dialect it means to.
 > **it does not prove any server accepts the result.**
 
-What it asserts is the load-bearing, dialect-specific part — the places where
-getting it wrong is a syntax error on a server nobody here can ask:
+What it asserts is the load-bearing, dialect-specific part, where getting it
+wrong is a syntax error on a server nobody here can ask:
 
 | | |
 |---|---|
@@ -266,8 +266,7 @@ studies, so anything other than the same answers is a defect.
 
 The browser checks start their own service on a port nothing else uses, and stop
 it again. A check that fetched a fixed address and hoped somebody had started
-something passes on a machine where anything is listening there — against
-whatever that is.
+something passes wherever anything is listening, against whatever that is.
 
 ## What it still gets wrong
 
