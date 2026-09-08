@@ -174,7 +174,7 @@ function seriesTable(db: Db, studies: Study[]): void {
 export const INSTALLATIONS = [
   {
     name: 'as-documented',
-    differs: 'nothing — the schema the vendor documentation describes',
+    differs: 'nothing: the schema the vendor documentation describes',
     why: 'The control. If an answer is wrong here it is the query that is wrong, not the schema.',
     build(db: Db) {
       studyTable(db, DOCUMENTED);
@@ -207,7 +207,7 @@ export const INSTALLATIONS = [
 
   {
     name: 'modality-on-series',
-    differs: 'there is no modality column on Study at all — it is on Series, through a foreign key',
+    differs: 'the modality is not on Study at all, but on Series, through a foreign key',
     why:
       'The documentation puts the modality on the study. The data model puts it on the series, which ' +
       'is where it belongs: a study can contain series of more than one modality. This is not a ' +

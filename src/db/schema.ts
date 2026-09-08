@@ -191,7 +191,7 @@ function describe(schema: Schema): string[] {
     notes.push(`the modality is on ${schema.table}.${schema.modality}`);
   } else if (schema.modalityFrom === 'series') {
     notes.push(
-      `${schema.table} has no modality column — it is on ${schema.seriesTable}.${schema.seriesModality}, ` +
+      `${schema.table} has no modality column: it is on ${schema.seriesTable}.${schema.seriesModality}, ` +
         `reached by a subquery rather than a join so studies are not counted once per series`
     );
   } else {

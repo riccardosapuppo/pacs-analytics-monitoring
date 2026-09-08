@@ -119,7 +119,7 @@ async function showDashboard() {
     $('undatable').hidden = false;
     $('undatable').innerHTML =
       `<strong>${said.summary.undatable} of the ${said.summary.inTheArchive.toLocaleString('en-GB')} rows here cannot be dated</strong>` +
-      ` — <code>StudyDate</code> holds whatever the sending modality put in it, and these are not eight digits.` +
+      `: <code>StudyDate</code> holds whatever the sending modality put in it, and these are not eight digits.` +
       ` They are in the archive and in none of the charts below, which is why the count says so rather than` +
       ` letting a total and a chart disagree by four.`;
   } else {
@@ -158,7 +158,7 @@ async function showDashboard() {
     ) +
     `<p class="hint small">` +
     (room.forecast.possible
-      ? `The dashed columns are <strong>a straight line through the ${room.forecast.from} complete years</strong>, and nothing more — about ` +
+      ? `The dashed columns are <strong>a straight line through the ${room.forecast.from} complete years</strong> and nothing more: about ` +
         `${room.forecast.perYearGB.toFixed(0)} GB a year. It knows nothing about the scanner arriving in March. ` +
         (room.runsOut.known
           ? `At that rate the ${room.runsOut.capacityGB} GB volume, ${room.runsOut.percentUsed.toFixed(0)}% used, lasts about ${room.runsOut.yearsLeft.toFixed(0)} more years.`
@@ -184,7 +184,7 @@ async function showDashboard() {
     $('heatmap').innerHTML =
       grid(said.heatmap.grid, said.heatmap.days) +
       `<p class="hint small">Busiest: <strong>${safe(said.heatmap.busiest.day)} at ${String(said.heatmap.busiest.hour).padStart(2, '0')}:00</strong>` +
-      ` (${said.heatmap.busiest.studies} studies). Weekday and hour are both worked out in the database from two string columns —` +
+      ` (${said.heatmap.busiest.studies} studies). Weekday and hour are both worked out in the database from two string columns,` +
       ` and Monday is zero in three different ways across the three dialects.</p>`;
   }
 }

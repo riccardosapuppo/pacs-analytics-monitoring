@@ -386,6 +386,32 @@ footer p { margin: 0; color: var(--ink-faint); font-size: 0.82rem; max-width: 82
 footer code { font-family: var(--mono); font-size: 0.86em; }
 footer .by { margin-top: 0.5rem; }
 
+/* The signature is the only link on the page, so nothing else has taught the
+   reader what a link looks like here — it has to say so by itself, and without
+   inventing a colour. It takes no new token: it steps up from the faint grey
+   the rest of the footer is set in to the grey this console already uses for
+   secondary text, which is a lift you can see (6.78:1 on the paper in light,
+   9.29:1 in dark) but not a second accent competing with the one thing on this
+   page allowed to be blue. At 0.82rem that lift alone is not a signal, so the
+   underline is there before the pointer is, thin and set low enough to clear
+   the descenders. Hover goes to the page's full ink; the focus ring is the
+   3px accent every control here already wears. */
+footer .by a {
+  color: var(--ink-soft);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+  border-radius: 3px;
+}
+
+footer .by a:hover { color: var(--ink); }
+
+footer .by a:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: no-preference) {
+  footer .by a { transition: color 0.15s ease; }
+}
+
 @media (max-width: 68rem) {
   .two { grid-template-columns: minmax(0, 1fr); }
 }

@@ -64,7 +64,7 @@ export function forecast(years: Array<{ year: number; gb: number }>, { ahead = 3
       possible: false,
       why:
         `a line through ${complete.length} complete ${complete.length === 1 ? 'year' : 'years'} is not a forecast` +
-        (years.length > complete.length ? ' — the current year is left out, because a part of a year fitted as a whole one points downwards' : ''),
+        (years.length > complete.length ? '; the current year is left out, because a part of a year fitted as a whole one points downwards' : ''),
       years: [],
     };
   }

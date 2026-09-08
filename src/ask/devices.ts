@@ -22,7 +22,7 @@ export function devices(run: Run, d: Dialect, schema: Schema, filters: Filters =
     return {
       available: false,
       why:
-        'this database has no source device column — it is optional, and was added in a later ' +
+        'this database has no source device column, an optional one added in a later ' +
         'version of the schema than the one installed here',
       looked: ['SourceDevice', 'SourceAeTitle', 'SourceApplicationEntityTitle'],
       rows: [],
