@@ -39,9 +39,18 @@
         </div>
       </div>
 
+      <!--
+        The one control on the page, and it has to say so.
+
+        Somebody who did not already know what the six were read the subtitle,
+        read the line under the header, and still asked what this select was
+        for. Both of those say what this installation IS; neither says what
+        happens when you change it, which is the entire demonstration.
+      -->
       <label class="pick">
         <span>reading</span>
         <select id="installation"></select>
+        <small>change it: the numbers stay, the ones written straight move</small>
       </label>
     </header>
 
@@ -96,6 +105,38 @@
         </div>
       </section>
 
+      <div class="two">
+        <!-- ─────────────────────────────────────────────────────── modalities -->
+        <section class="panel chart">
+          <h2>By modality</h2>
+          <div id="modalities"></div>
+        </section>
+
+        <!-- ────────────────────────────────────────────────────────── devices -->
+        <section class="panel chart">
+          <h2>By device</h2>
+          <div id="devices"></div>
+        </section>
+      </div>
+
+      <!-- ────────────────────────────────────────────────────── over the years -->
+      <section class="panel chart">
+        <h2>Storage, and where the line goes</h2>
+        <div id="storage"></div>
+      </section>
+
+      <!-- ────────────────────────────────────────────────────────── the months -->
+      <section class="panel chart">
+        <h2>Studies per month</h2>
+        <div id="trend"></div>
+      </section>
+
+      <!-- ───────────────────────────────────────────────────────── the heatmap -->
+      <section class="panel chart">
+        <h2>When the archive is busy</h2>
+        <div id="heatmap"></div>
+      </section>
+
       <!--
         ──────────────────────────────────────────────────────── all six at once
 
@@ -145,38 +186,6 @@
           </summary>
           <ul class="notes" id="measurement-silent-list"></ul>
         </details>
-      </section>
-
-      <div class="two">
-        <!-- ─────────────────────────────────────────────────────── modalities -->
-        <section class="panel chart">
-          <h2>By modality</h2>
-          <div id="modalities"></div>
-        </section>
-
-        <!-- ────────────────────────────────────────────────────────── devices -->
-        <section class="panel chart">
-          <h2>By device</h2>
-          <div id="devices"></div>
-        </section>
-      </div>
-
-      <!-- ────────────────────────────────────────────────────── over the years -->
-      <section class="panel chart">
-        <h2>Storage, and where the line goes</h2>
-        <div id="storage"></div>
-      </section>
-
-      <!-- ────────────────────────────────────────────────────────── the months -->
-      <section class="panel chart">
-        <h2>Studies per month</h2>
-        <div id="trend"></div>
-      </section>
-
-      <!-- ───────────────────────────────────────────────────────── the heatmap -->
-      <section class="panel chart">
-        <h2>When the archive is busy</h2>
-        <div id="heatmap"></div>
       </section>
 
       <!-- ────────────────────────────────────────────────────────── the studies -->

@@ -109,6 +109,12 @@ body {
 
 /* The one control that matters, and it looks like it. */
 .pick { display: flex; gap: 0.5rem; align-items: center; font-size: 0.85rem; color: var(--ink-faint); }
+
+/* What changing it does, beside it rather than somewhere else on the page.
+   It wraps under the select where the header is narrow, which is why the
+   label is allowed to wrap at all. */
+.pick { flex-wrap: wrap; justify-content: flex-end; }
+.pick small { flex-basis: 100%; text-align: right; font-size: 0.76rem; color: var(--ink-faint); }
 .pick select {
   font: 600 0.92rem/1 var(--mono);
   padding: 0.55rem 0.7rem;
