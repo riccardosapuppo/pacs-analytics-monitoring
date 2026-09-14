@@ -19,6 +19,7 @@
 import { createRequire } from 'node:module';
 
 import { howToLaunch } from './browser.ts';
+import { holdTheReadmeToIt } from './readme-says.ts';
 import { startTheService } from './with-the-service.ts';
 
 const show = process.argv.includes('--show');
@@ -212,3 +213,5 @@ if (bad > 0) {
 } else {
   console.log(`${checks} checks: somebody can change the schema and watch the two sides come apart.`);
 }
+
+holdTheReadmeToIt('npm run check:screen', checks);

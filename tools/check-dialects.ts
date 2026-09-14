@@ -43,6 +43,7 @@ import { storage } from '../src/ask/storage.ts';
 import { studies } from '../src/ask/studies.ts';
 import { summary } from '../src/ask/summary.ts';
 import { trend } from '../src/ask/trend.ts';
+import { holdTheReadmeToIt } from './readme-says.ts';
 
 const show = process.argv.includes('--show');
 
@@ -238,3 +239,5 @@ if (bad > 0) {
   console.log(`${checks} checks: the builder emits the dialect it means to.`);
   console.log('It does not prove a server accepts it. Only SQLite is executed here, and the README says so.');
 }
+
+holdTheReadmeToIt('npm run check:dialects', checks);

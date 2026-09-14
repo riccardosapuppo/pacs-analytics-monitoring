@@ -270,7 +270,7 @@ becomes a rubber stamp.
 ## What it is checked with
 
 ```
-npm test               # 48  the guards, the resolution, the answers, the CSV
+npm test               # 50  the guards, the resolution, the answers, the CSV
 npm run typecheck        the types, and that Node can still run this without a build
 npm run measure        #     the claim, against six installations
 npm run check:dialects # 23  what the two unexecuted dialects emit

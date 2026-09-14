@@ -18,6 +18,7 @@
  */
 
 import { startTheService } from './with-the-service.ts';
+import { holdTheReadmeToIt } from './readme-says.ts';
 
 let checks = 0;
 let bad = 0;
@@ -113,3 +114,5 @@ if (bad > 0) {
 } else {
   console.log(`All ${checks} checks passed.`);
 }
+
+holdTheReadmeToIt('npm run check:serving', checks);
