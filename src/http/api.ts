@@ -26,6 +26,7 @@ import { fileURLToPath } from 'node:url';
 
 import { INSTALLATIONS, open } from '../fixtures/installations.ts';
 import { asCsv, studies } from '../ask/studies.ts';
+import { compareEverything, type Comparison } from '../measure/compare.ts';
 import { askStraight } from '../ask/straight.ts';
 import { devices } from '../ask/devices.ts';
 import { heatmap } from '../ask/heatmap.ts';
@@ -76,6 +77,21 @@ function everything() {
 }
 
 export type Log = (level: string, message: string, detail?: Record<string, unknown>) => void;
+
+/*
+ * Worked out once, on the first request that asks for it.
+ *
+ * The six databases are built in memory from fixed facts when the service
+ * starts, so the comparison cannot change while it runs: computing it per
+ * request would open and close six databases to produce the same answer. A
+ * cache that can go stale would be a different matter; this one cannot.
+ */
+let theMeasurement: Comparison | null = null;
+
+function measured(): Comparison {
+  theMeasurement ??= compareEverything();
+  return theMeasurement;
+}
 
 export function service({ log = () => {} }: { log?: Log } = {}) {
   const held = everything();
@@ -132,6 +148,23 @@ export function service({ log = () => {} }: { log?: Log } = {}) {
         executed: sqlite.executed,
         reads: 'nothing but SELECT — there is no INSERT, UPDATE or DELETE in src/',
       });
+    }
+
+    /**
+     * The measurement: every question, every installation, both ways.
+     *
+     * The same grid `npm run measure` prints, from the same function -- see
+     * src/measure/compare.ts for why it is not computed twice. It is here
+     * because it is the argument this project makes, and until now the only way
+     * to see it was to open a terminal, which most people looking at a console
+     * do not do.
+     *
+     * Not filtered by the installation in the select: the point of it is the
+     * comparison ACROSS the six, and one column of it is what the rest of this
+     * screen already shows.
+     */
+    if (at.pathname === '/api/measurement') {
+      return json(response, 200, measured());
     }
 
     /** What this installation calls things, and how that was worked out. */

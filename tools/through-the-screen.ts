@@ -18,6 +18,7 @@
 
 import { createRequire } from 'node:module';
 
+import { howToLaunch } from './browser.ts';
 import { startTheService } from './with-the-service.ts';
 
 const show = process.argv.includes('--show');
@@ -57,7 +58,7 @@ function has(what: string, got: unknown, wanted: unknown): void {
 const say = (what: string): void => console.log(`\n  ${what}`);
 
 const service = await startTheService();
-const browser = await chromium.launch({ channel: 'msedge', headless: !show });
+const browser = await chromium.launch(howToLaunch({ headless: !show }));
 const page = await browser.newPage({ viewport: { width: 1440, height: 1200 }, reducedMotion: 'reduce' });
 
 // Anything the page throws fails this even if every assertion passes: a screen

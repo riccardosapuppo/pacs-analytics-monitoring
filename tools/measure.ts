@@ -36,37 +36,22 @@
  * in which that is acceptable.
  */
 
-import { INSTALLATIONS, open } from '../src/fixtures/installations.ts';
-import { QUESTIONS, ABOUT, askResolved } from '../src/measure/questions.ts';
-import { askStraight } from '../src/ask/straight.ts';
-import { judge, truthFor } from '../src/measure/truth.ts';
-import { mustResolve } from '../src/db/schema.ts';
-import { runner } from '../src/db/sqlite.ts';
-import { sqlite } from '../src/db/dialect.ts';
+import { INSTALLATIONS } from '../src/fixtures/installations.ts';
+import { QUESTIONS, ABOUT } from '../src/measure/questions.ts';
+import { compareEverything } from '../src/measure/compare.ts';
 
 const detail = process.argv.includes('--detail');
 
-const results = [];
-
-for (const installation of INSTALLATIONS) {
-  const { db } = open(installation.name);
-  const run = runner(db as unknown as Parameters<typeof runner>[0]);
-  const schema = mustResolve(run, sqlite);
-  const truth = truthFor(installation.name);
-
-  for (const question of QUESTIONS) {
-    const wanted = truth[question as keyof typeof truth];
-
-    results.push({
-      installation: installation.name,
-      question,
-      straight: outcomeOf(() => askStraight(run, question, installation.name), wanted),
-      resolved: outcomeOf(() => ({ how: 'resolved', value: askResolved(run, sqlite, schema, question), error: null }), wanted),
-    });
-  }
-
-  db.close();
-}
+/*
+ * The comparison is in src/measure/compare.ts, not here.
+ *
+ * The console shows the same grid on a screen now, and a page and a check that
+ * compute the same numbers separately are a page and a check that can quietly
+ * disagree -- which is the subject of this whole project. This file is what is
+ * left when the printing and the exit code are taken out of the measuring: the
+ * terminal half of two callers.
+ */
+const { cells: results } = compareEverything();
 
 // ---------------------------------------------------------------- the report
 
@@ -158,52 +143,6 @@ if (readWrong.length > 0) {
 }
 
 // ---------------------------------------------------------------------------
-
-/**
- * What happened, in four kinds rather than two.
- *
- *   right    it ran as written and matched the facts
- *   patched  it errored, the obvious one-line repair ran, and THAT matched
- *   loud     it errored and nothing obvious repairs it
- *   silent   it ran -- as written or repaired -- and was wrong
- *
- * `patched` is its own kind because collapsing it either way would tell a lie.
- * Counting it as `right` hides that the query did not work on that site at all;
- * counting it as `loud` hides that somebody fixed it in an afternoon and moved
- * on, which is what actually happens.
- *
- * The three that are not `silent` all have one thing in common: **somebody
- * knows**. That is the line the whole measurement is drawn around.
- */
-/** What `askResolved` and `askStraight` both return. */
-type Said = { how: string; value: unknown; error: string | null };
-
-function outcomeOf(ask: () => unknown, wantedIn: unknown) {
-  const wanted = wantedIn as { unanswerable?: boolean } | null;
-  let said: Said;
-
-  try {
-    said = ask() as Said;
-  } catch (error) {
-    return { outcome: 'loud', why: (error instanceof Error ? error.message : String(error)), how: 'threw' };
-  }
-
-  if (said.how === 'unanswerable') {
-    // Saying "there is no such column here" is only right if there really is
-    // nothing to answer with. Where the truth has an answer, refusing is a
-    // loud failure like any other.
-    if (wanted && wanted.unanswerable) return { outcome: 'right', why: '', how: said.how };
-    return { outcome: 'loud', why: said.error ?? '', how: said.how };
-  }
-
-  const verdict = judge(wanted, said.value);
-
-  if (!verdict.right) {
-    return { outcome: 'silent', why: `${said.how}: ${verdict.why}`, how: said.how };
-  }
-
-  return { outcome: said.how === 'patched' ? 'patched' : 'right', why: '', how: said.how };
-}
 
 function score(sides: Array<{ outcome: string }>) {
   const count = (what: string) => sides.filter((one) => one.outcome === what).length;

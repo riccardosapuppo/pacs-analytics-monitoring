@@ -62,6 +62,65 @@ const where = (what, extra = {}) => {
   return `${what}?${at}`;
 };
 
+// ──────────────────────────────────────────────────── the measurement, all six
+//
+// Asked once, not on every change of installation: it is the same grid whatever
+// is selected, and re-fetching it on each change would redraw a table nobody
+// asked to see move.
+
+const WORDS = {
+  right: 'right',
+  patched: 'patched',
+  loud: 'loud',
+  silent: 'SILENT',
+};
+
+async function showMeasurement() {
+  const said = await (await fetch('/api/measurement')).json();
+
+  const tally = (cells, side) => {
+    const count = (what) => cells.filter((one) => one[side].outcome === what).length;
+    return ['right', 'patched', 'loud', 'silent']
+      .filter((what) => count(what) > 0)
+      .map((what) => `<span class="mark ${what}">${count(what)} ${WORDS[what]}</span>`)
+      .join(' ');
+  };
+
+  $('measurement-rows').innerHTML = said.installations
+    .map((name) => {
+      const mine = said.cells.filter((one) => one.installation === name);
+      return (
+        `<tr><th scope="row">${safe(name)}</th>` +
+        `<td>${tally(mine, 'straight')}</td>` +
+        `<td>${tally(mine, 'resolved')}</td></tr>`
+      );
+    })
+    .join('');
+
+  const silent = said.cells.filter((one) => one.straight.outcome === 'silent');
+  const readWrong = said.cells.filter((one) => one.resolved.outcome !== 'right');
+
+  // The same sentence the command prints, and for the same reason: the six hold
+  // the same studies, so anything other than the same answers is a defect.
+  $('measurement-verdict').innerHTML = readWrong.length
+    ? `<strong class="bad">${readWrong.length} answers are wrong on the side that reads the schema first.</strong> ` +
+      'The six hold the same studies, so that is a defect and not a result.'
+    : 'Reading the schema first: <strong>every question, every installation, right</strong>. ' +
+      `Writing the SQL straight: <strong class="bad">${silent.length} answers wrong with nothing to show for it</strong>.`;
+
+  $('measurement-silent-say').textContent = silent.length
+    ? `${silent.length} of ${said.cells.length}`
+    : 'none';
+
+  $('measurement-silent-list').innerHTML = silent
+    .map(
+      (one) =>
+        `<li><strong>${safe(one.installation)}</strong> · ${safe(one.question)}<br />` +
+        `<span class="why">${safe(one.straight.why)}</span></li>`
+    )
+    .join('');
+}
+
 // ─────────────────────────────────────────────── what it found in the schema
 
 async function showSchema() {
@@ -365,3 +424,8 @@ $('find').addEventListener('submit', (event) => {
 
 await readInstallations();
 await showEverything();
+
+// After the rest, and not awaited with it: the grid is the same whatever is
+// selected, and making the first paint wait on six databases being compared
+// would hold up the screen somebody actually came for.
+void showMeasurement();

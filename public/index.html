@@ -96,6 +96,57 @@
         </div>
       </section>
 
+      <!--
+        ──────────────────────────────────────────────────────── all six at once
+
+        The panel above shows one installation disagreeing. This shows every
+        one of them, which is the argument: the same eight questions, the same
+        studies underneath, and one side of it wrong in silence.
+
+        It does not follow the select, on purpose. Filtering it by installation
+        would make it a second copy of the panel above; what it is for is the
+        comparison ACROSS the six.
+
+        The same grid `npm run measure` prints, from the same function -- and
+        that is the point of it being here at all, because until now the only
+        way to see the argument was to open a terminal.
+      -->
+      <section class="panel measurement">
+        <h2>The same questions, asked of all six</h2>
+
+        <p class="hint">
+          Six installations holding <strong>the same studies</strong>, disagreeing
+          only about how to write them down. Eight questions each, asked twice:
+          once with the SQL written straight against the documented schema, once
+          by reading the schema first. Every answer is checked against a truth
+          worked out from the facts in plain JavaScript, never by running a
+          query.
+        </p>
+
+        <div class="rows">
+          <table class="grid" id="measurement">
+            <thead>
+              <tr>
+                <th>installation</th>
+                <th>SQL written straight</th>
+                <th>the schema read first</th>
+              </tr>
+            </thead>
+            <tbody id="measurement-rows"></tbody>
+          </table>
+        </div>
+
+        <p class="verdict" id="measurement-verdict">reading the measurement…</p>
+
+        <details class="panel found silent" id="measurement-silent">
+          <summary>
+            <h3>What was wrong without erroring</h3>
+            <span class="summary-say" id="measurement-silent-say">—</span>
+          </summary>
+          <ul class="notes" id="measurement-silent-list"></ul>
+        </details>
+      </section>
+
       <div class="two">
         <!-- ─────────────────────────────────────────────────────── modalities -->
         <section class="panel chart">

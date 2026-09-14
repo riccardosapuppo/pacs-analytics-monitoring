@@ -11,6 +11,17 @@ The argument is not the dashboard. It is this:
 
 ![The console: the same questions answered by reading the schema first and by writing the SQL out, with the archive drawn underneath](docs/console.png)
 
+```
+npm install
+npm start
+```
+
+The console opens by itself on <http://127.0.0.1:3800>, with six installations
+in a select at the top. Nothing else is needed: no database server, no account,
+no key. What the argument is, and the measurement behind it, is below — but it
+reads better once you have seen the thing. [Running it in full](#run-it) is
+further down.
+
 ## Where this came from
 
 The original was a route inside a much larger PACS viewer: a few thousand lines
@@ -49,6 +60,13 @@ transfers, which is all of the reasoning and none of the customer.
 ```
 npm run measure
 ```
+
+**The same grid is on the console**, under *The same questions, asked of all
+six* — from the same function, because a page and a check that compute the same
+numbers separately are a page and a check that can quietly disagree, which is
+the subject of this whole project. The command stays a command because it has an
+exit code: it **fails the run** when the resolved side is not right everywhere,
+and a web page cannot fail a build.
 
 Eight questions. Six installations **holding the same studies** and disagreeing
 only about how to write them down. Two ways of answering each. So every question
@@ -189,7 +207,9 @@ takes to mean "no studies" rather than "no column".
   check that this still runs without a build.
 - **No runtime dependencies.** `npm install` fetches `playwright-core`, which is
   a devDependency for the two browser-driven checks and drives the **Microsoft
-  Edge** already on this machine rather than downloading a browser.
+  Edge** already on this machine rather than downloading a browser. In CI, where
+  there is no Edge and a machine to throw away afterwards, the runner installs
+  one and `PLAYWRIGHT_CHANNEL=""` tells them to use that.
 - **Nothing is written anywhere.** There is no `INSERT`, `UPDATE` or `DELETE` in
   `src/`, and a CI step greps for them so that stays true.
 - **To put the machine back:** delete `node_modules/` and the clone.
@@ -267,6 +287,11 @@ studies, so anything other than the same answers is a defect.
 The browser checks start their own service on a port nothing else uses, and stop
 it again. A check that fetched a fixed address and hoped somebody had started
 something passes wherever anything is listening, against whatever that is.
+
+**All of them run in CI**, which `check:screen` did not until recently: it was
+named here as one of the checks and pinned to a browser no Linux runner has, so
+it ran on one machine on the days somebody remembered. A check nobody runs
+defends nothing.
 
 ## What it still gets wrong
 

@@ -428,3 +428,58 @@ footer .by a:focus-visible { outline: 3px solid var(--accent); outline-offset: 2
  * becomes sixty two-pixel slivers, which is a texture rather than a reading. */
 .chart > div { overflow-x: auto; }
 .columns { height: 215px; width: auto; max-width: 100%; }
+
+/* ─────────────────────────────────────────────── the measurement, all six
+ *
+ * The grid `npm run measure` prints, on the screen. Four outcomes and not two,
+ * because the difference between them is the subject: a query that errors gets
+ * fixed on Monday, and one that answers wrongly is believed. So `SILENT` is the
+ * only one drawn in the wrong colour -- the others are all somebody knowing.
+ */
+table.grid { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+
+table.grid th {
+  text-align: left;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-faint);
+  background: var(--raised);
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid var(--line);
+  font-weight: 600;
+}
+
+table.grid tbody th {
+  background: none;
+  text-transform: none;
+  letter-spacing: 0;
+  font: 600 0.8rem var(--mono);
+  color: var(--ink);
+}
+
+table.grid td { padding: 0.4rem 0.6rem; border-bottom: 1px solid var(--line); }
+table.grid tr:last-child td, table.grid tr:last-child th { border-bottom: none; }
+
+.mark {
+  display: inline-block;
+  padding: 0.05rem 0.4rem;
+  margin-right: 0.3rem;
+  border-radius: 3px;
+  font: 600 0.72rem var(--mono);
+  white-space: nowrap;
+}
+
+.mark.right { color: var(--ink-soft); background: var(--raised); }
+.mark.patched { color: var(--warn); background: var(--warn-soft); }
+.mark.loud { color: var(--warn); background: var(--warn-soft); }
+.mark.silent { color: var(--wrong); background: var(--wrong-soft); border: 1px solid var(--wrong-line); }
+
+.verdict { margin: 0.8rem 0 0; font-size: 0.88rem; color: var(--ink-soft); }
+.verdict .bad { color: var(--wrong); }
+
+/* Folded: the list of what was wrong in silence is the detail behind the
+   number above it, and a reader who wants the number should not have to
+   scroll past the list to reach the rest of the page. */
+details.silent { margin-top: 0.8rem; }
+details.silent .why { color: var(--ink-faint); font: 0.78rem var(--mono); }

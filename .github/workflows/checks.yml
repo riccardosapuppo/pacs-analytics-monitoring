@@ -53,6 +53,29 @@ jobs:
       - name: nobody can be handed yesterday's page
         run: npm run check:serving
 
+      # The check the README names and this job did not run.
+      #
+      # It drives a browser, and it was written against the Edge that is on the
+      # desk it was written on -- so on a Linux runner it could not have run,
+      # and nothing said so. It ran on one machine, on the days somebody
+      # remembered, and a check nobody runs defends nothing.
+      #
+      # It stays out of the dependencies: the README promises Node and nothing
+      # else, and an install that quietly fetches 300 MB of browser makes that
+      # false for everybody who only wants to see the console. Here the runner
+      # installs one, uses it, and is thrown away.
+      - name: get a browser to drive
+        run: |
+          npm install --no-save --no-audit --no-fund playwright
+          npx playwright install --with-deps chromium
+
+      - name: somebody can change the schema and watch the two sides come apart
+        # Empty means the browser Playwright brought, rather than the Edge this
+        # repository expects on a desk. Empty and unset are not the same thing.
+        env:
+          PLAYWRIGHT_CHANNEL: ""
+        run: npm run check:screen
+
       - name: it answers, over HTTP, from a standing start
         # The README opens with `npm start`. This is that command, and requests
         # to the thing it starts -- the check that catches a project which

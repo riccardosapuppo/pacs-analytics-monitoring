@@ -18,6 +18,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 
+import { howToLaunch } from './browser.ts';
 import { startTheService } from './with-the-service.ts';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -35,7 +36,7 @@ try {
 fs.mkdirSync(DOCS, { recursive: true });
 
 const service = await startTheService();
-const browser = await chromium.launch({ channel: 'msedge' });
+const browser = await chromium.launch(howToLaunch());
 const say = (name: string): void => console.log(`  docs/${name}`);
 
 try {
